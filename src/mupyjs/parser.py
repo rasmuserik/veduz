@@ -43,6 +43,8 @@ class Parser:
     def parse_Dict(self, node):
         assert(len(node.elements) == 0)
         return AST("dict")
+    def parse_Expr(self, node):
+        return self(node.value)
     def parse_FunctionDef(self, node):
         assert(isinstance(node.params, cst.Parameters))
         assert(isinstance(node.body, cst.IndentedBlock))
@@ -59,7 +61,6 @@ class Parser:
                 kwparams.append(AST("splat", self(node.params.star_kwarg.name)))
             params.append(AST("arg", AST("dict", *kwparams)))
         return AST("function", self(node.name), *params, *map(self, node.body.body))
-
     def parse_If(self, node):
         args = ["if", self(node.test), self(node.body)]
         if classname(node.orelse) == "Else":
@@ -84,6 +85,8 @@ class Parser:
     def parse_SimpleStatementLine(self, node):
         assert(len(node.body) == 1)
         return self(node.body[0])
+    def parse_SimpleString(self, node):
+        return node.value[1:-1]
     def parse_Slice(self, node):
         return AST("call", AST("name", "slice"), self(node.lower), self(node.upper), self(node.step))
     def parse_Subscript(self, node):

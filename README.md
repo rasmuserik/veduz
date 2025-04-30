@@ -6,25 +6,39 @@ Minimal Python subset that translate to modern JavaScript
 
 Motivation/design choices
 
-Roadmap/tasks
+Initial Roadmap/tasks
 - [x] initial parser
 - [x] AST-prettyprinter
+- [x] run example from README.md
 - [ ] initial compiler
-- [ ] run example from README.md
 - [ ] JS prettier service
 - [ ] test examples from README.md
 
-# Modules and imports
-### Test
+Vision:
+
+- transpilation py to js
+	- µPython to AST
+	- AST to JS
+- code transformations
+	- AST to µPY
+	- partial evaluation
+- two-way, also to/from JS+types (µTS)
+
+
+
+# Spec and test
+
+This document is both the language spec, and also unit test for the compiler. All language features are documented here, with example of python code, the expected AST, and expected JS.
+
+The testrunner reads the spec, extract python/AST/JS run the compiler on the code.
 
 ```python
 print("hello world")
 ```
 
-```AST
+```ast
 (module
-  (. print "hello world")
-)
+  (call print "hello world"))
 ```
 
 ```js
