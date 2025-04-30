@@ -1,6 +1,5 @@
 
-# mupyjs
-![mupyjs](icon.webp)
+# muPyJS <img src="mupyjs.webp" width=64 height=64 /> 
 
 Minimal Python subset that translate to modern JavaScript
 
@@ -36,7 +35,7 @@ The testrunner reads the spec, extract python/AST/JS run the compiler on the cod
 print("hello world")
 ```
 
-```ast
+```AST
 (module
   (call print "hello world"))
 ```

@@ -10,7 +10,7 @@ if __name__ == "__main__":
     tests = [];
     for i in range(0, len(doc) - 6):
         if (re.match(r'python *\n', doc[i+1]) and 
-            re.match(r'ast *\n', doc[i+3]) and 
+            re.match(r'AST *\n', doc[i+3]) and 
             re.match(r'js *\n', doc[i+5])):
             tests.append([doc[i]] + [re.sub(r'^[^\n]*\n', '', src) for src in [doc[i+1], doc[i+3], doc[i+5]]])
     if len(sys.argv) > 1:
