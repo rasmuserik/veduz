@@ -44,7 +44,6 @@ def pp_pplist(pplist, indent = "  "):
     try:
         return ppline(pplist, maxlen - len(indent))
     except Exception as e:
-        print(pplist)
         result = pplist[0] + pplist[1] + "\n" + indent
         for child in pplist[2:-2]:
             result = result + pp_pplist(child, indent + "  ") + "\n" + indent
@@ -63,7 +62,7 @@ def _parse_pp(str):
             if str[i] == '\\': i = i + 1
             i = i + 1
     elif str[0] == '(':
-        str = str[1:-1].strip()
+        str = str[1:].strip();
         result = []
         while str and str[0] != ')':
             [first, rest] = _parse_pp(str)
@@ -82,7 +81,12 @@ def _parse_pp(str):
 
 
 def parse_pp(str):
-    return _parse_pp(str)[0]
+    result = []
+    while str.strip():
+        [first, rest] = _parse_pp(str)
+        result.append(first)
+        str = rest
+    return AST("module", *result)
 
 
 if __name__ == "__main__":

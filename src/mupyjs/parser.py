@@ -25,9 +25,9 @@ class Parser:
         kwargs = []
         for arg in node.args:
             if arg.keyword:
-                raise Exception("Keyword arguments not supported yet", arg)
-                args.append(self(arg.keyword))
-                args.append(self(arg.value))
+                assert(isinstance(arg.keyword, cst.Name))
+                kwargs.append(arg.keyword.value)
+                kwargs.append(self(arg.value))
             elif arg.star == "*":
                 args.append(AST("splat", self(arg.value)))
             elif arg.star == "**":
@@ -60,7 +60,7 @@ class Parser:
             if node.params.star_kwarg:
                 kwparams.append(AST("splat", self(node.params.star_kwarg.name)))
             params.append(AST("arg", AST("dict", *kwparams)))
-        return AST("function", self(node.name), *params, *map(self, node.body.body))
+        return AST("fn", self(node.name), *params, *map(self, node.body.body))
     def parse_If(self, node):
         args = ["if", self(node.test), self(node.body)]
         if classname(node.orelse) == "Else":

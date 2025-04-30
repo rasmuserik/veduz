@@ -25,6 +25,74 @@ Vision:
 
 
 
+# AST
+### Names
+
+```python
+some_name
+```
+
+```AST
+(name "some_name")
+```
+
+```js
+some_name
+```
+### Literal `(num "123")` or `"str"`
+
+### function-call
+```python
+foo(blah, *args)
+bar(**kwargs)
+baz("foo", bar=123)
+```
+
+```AST
+(call foo blah (splat args))
+(call bar (dict "_kwargs" True (splat kwargs)))
+(call baz "foo" (dict "_kwargs" True "bar" 123))
+```
+
+```js
+foo(blah, ...args)
+bar({...kwargs})
+baz(foo, {_kwargs: true, bar: 123})
+```
+### methodcall `(.`_methodName_` obj ..args)`
+- `call obj method args()` sugar: `obj.method(arg-seq)`
+	- sugar: `o.methodname(...annotations, ...args)` 
+	- sugar: `o.(...)` = `o(...)` or `new O(...)` if o is uppercase. Not overloadable
+	- sugar: `o.__get__("foo")` = `o["foo"]`
+	- sugar: `o.__getattr__("foo")` = `o.foo`
+	- sugar: `o.__set__("foo", bar)` = `o["foo"] = bar`
+	- sugar: `o.__setattr__("foo", bar)` = `o.foo = bar`
+	- sugar: `a.__add__(b)`... = `a+b`...
+	- sugar: `[...]` = `List(...)`, `{...}` = `Dict(key, val, ...)` 
+	- sugar: `"...".__format__(a, b)` = `f"foo {a}  {b}"`
+#### non-method call and object instantiation `(. fn ..args)`
+- Python: `fn(..args)`
+- JavaScript: `fn(..args)` or `new Fn(..args)` if fn i starting with an uppercase letter
+### And/or `(and a b)` / `(or a b)`
+
+### Outer/global `(set name val)`
+
+### Splats `(splat obj)`
+
+### Classes
+
+### Dicts
+
+### Function definitions `fn`, `arg`
+
+### If-else
+
+### blocks `do`
+
+### subscripts
+### Slices
+
+
 # Spec and test
 
 This document is both the language spec, and also unit test for the compiler. All language features are documented here, with example of python code, the expected AST, and expected JS.
@@ -36,8 +104,7 @@ print("hello world")
 ```
 
 ```AST
-(module
-  (call print "hello world"))
+(call print "hello world")
 ```
 
 ```js
@@ -78,7 +145,6 @@ AST-nodes can be serialised(without meta) as `[type ..children]`
 # Statements
 ## Bind
 ### Local `(let name val)`
-### Outer/global `(set name val)`
 ### Iterator (only in for) `(iter name seq)`
 ### Arguments (only in fn) `(arg name default)`
 ### Import `(import name module)`
