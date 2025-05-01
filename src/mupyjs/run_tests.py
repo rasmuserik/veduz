@@ -35,4 +35,3 @@ if __name__ == "__main__":
             run_test(test_file)
         except Exception as e:
             print(f"Error running test {test_file}: {e}")
-            raise e

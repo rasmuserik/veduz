@@ -15,14 +15,19 @@ class Pass_1:
         result = AST("fn", ast.meta, *map(self, children))
         self.scope = prev_scope
         return result
-    def handle_set(self, ast):
-        print("HERE", pp(ast))
+    def handle_iter(self, ast):
         if ast.children[0].type == "name":
             name = ast.children[0].children[0]
             if not name in self.scope:
                 ast.meta["vartype"] = "var"
                 self.scope[name] = {}
-            print("HERE2", ast.meta)
+        return AST(ast.type, ast.meta, *map(self, ast.children))
+    def handle_set(self, ast):
+        if ast.children[0].type == "name":
+            name = ast.children[0].children[0]
+            if not name in self.scope:
+                ast.meta["vartype"] = "var"
+                self.scope[name] = {}
         return AST(ast.type, ast.meta, *map(self, ast.children))
     def postprocess(self, ast):
         return ast

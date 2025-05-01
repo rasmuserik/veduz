@@ -70,6 +70,12 @@ class Compiler:
         result += "}"
         self.compiling_class = compiling_class
         return result;
+    def compile_for(self, ast):
+        iter = ast.children[0]
+        vartype = ""
+        if "vartype" in iter.meta:
+            vartype = iter.meta["vartype"] + " "
+        return "for(" + vartype + " " + self(iter.children[0])+ " of " + self(iter.children[1]) + "){" + self(ast.children[1]) + "}"
     def compile_if(self, ast):
         result = "if(" + self(ast.children[0]) + "){" + self(ast.children[1]) + "}"
         i = 2
@@ -105,6 +111,14 @@ class Compiler:
     def compile_splat(self, ast):
         assert(len(ast.children) == 1)
         return "..." + self(ast.children[0])
+    def method___eq__(self, ast):
+        return "(" + self(ast.children[0]) + "??Null).__eq__(" + self(ast.children[1]) + ")"
+    def method___ne__(self, ast):
+        return "(" + self(ast.children[0]) + "??Null).__ne__(" + self(ast.children[1]) + ")"
+    def method___is(self, ast):
+        return "(" + self(ast.children[0]) + ") === (" + self(ast.children[1]) + ")"
+    def method___isnot(self, ast):
+        return "(" + self(ast.children[0]) + ") !== (" + self(ast.children[1]) + ")"
     def method___call__(self, ast):
         prefix = "("
         if(ast.children[0].type == "name" and ast.children[0].children[0][0].isupper()):

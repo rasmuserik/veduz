@@ -104,7 +104,7 @@ a.__matmul__(b);
 
 ## Comparison
 
-```
+```python
 a < b
 a > b
 a == b
@@ -115,28 +115,32 @@ a is b
 a is not b
 a in b
 a not in b
+```
 
+```AST
 (.__lt__ a b)
 (.__gt__ a b)
 (.__eq__ a b)
-(.__le__ a b)
 (.__ge__ a b)
+(.__le__ a b)
 (.__ne__ a b)
 (.__is a b)
 (.__isnot a b)
 (.__contains__ b a)
 (.__not__ (.__contains__ b a))
+```
 
+```js
 a.__lt__(b);
 a.__gt__(b);
-a.__eq__(b);
-a.__le__(b);
+(a ?? Null).__eq__(b);
 a.__ge__(b);
-a.__ne__(b);
+a.__le__(b);
+(a ?? Null).__ne__(b);
 a === b;
 a !== b;
-a.__contains__(b);
-a.__contains__(b).__not__();
+b.__contains__(a);
+b.__contains__(a).__not__();
 ```
 
 ## Assignment
@@ -191,6 +195,34 @@ import * as baz from "@/foo/bar/baz"
 import * as bar from "@/foo"
 import {x, y, z} from "@/foo/bar"
 ```
+
+## For-loop
+
+```python
+for x in range(10):
+	print(x)
+
+for x in range(10):
+	print(x)
+```
+
+```AST
+(for (iter x (.__call__ range 10))
+    (.__call__ print x))
+
+(for (iter x (.__call__ range 10))
+    (.__call__ print x))
+```
+
+```js
+for(var x of range(10)) {
+	print(x);
+}
+for(x of range(10)) {
+	print(x);
+}
+```
+
 
 ## Functions
 

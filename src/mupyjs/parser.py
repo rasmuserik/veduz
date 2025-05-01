@@ -77,11 +77,38 @@ class Parser:
     def parse_ClassDef(self, node):
         assert(isinstance(node.body, cst.IndentedBlock))
         return AST("class", self(node.name), *map(self, node.body.body))
+    def parse_Comparison(self, node):
+        left = node.left
+        assert(len(node.comparisons) == 1)
+        type = classname(node.comparisons[0].operator)
+        right = node.comparisons[0].comparator
+        comparisons = {
+            "LessThan": "__lt__",
+            "LessThanEqual": "__le__",
+            "GreaterThan": "__gt__",
+            "GreaterThanEqual": "__ge__",
+            "Equal": "__eq__",
+            "NotEqual": "__ne__",
+            "Is": "__is",
+            "IsNot": "__isnot",
+        }
+        print(node)
+        if type in comparisons:
+            result = AST("." + comparisons[type], self(left), self(right))
+            print(pp(result))
+            return result
+        if type == "In":
+            return AST(".__contains__", self(right), self(left))
+        if type == "NotIn":
+            return AST(".__not__", AST(".__contains__", self(right), self(left)))
+        raise Exception("Unknown comparison operator", node)
     def parse_Dict(self, node):
         assert(len(node.elements) == 0)
         return AST("dict")
     def parse_Expr(self, node):
         return self(node.value)
+    def parse_For(self, node):
+        return AST("for", AST("iter", self(node.target), self(node.iter)), *map(self, node.body.body))
     def parse_FunctionDef(self, node):
         assert(isinstance(node.params, cst.Parameters))
         assert(isinstance(node.body, cst.IndentedBlock))
@@ -147,6 +174,8 @@ class Parser:
         return AST("name", "None")
     def parse_Pass(self, node):
         return AST("name", "pass")
+    def parse_Return(self, node):
+        return AST("return", self(node.value))
     def parse_SimpleStatementLine(self, node):
         assert(len(node.body) == 1)
         return self(node.body[0])
