@@ -1,6 +1,28 @@
 import libcst as cst
 from mupyjs.AST import AST, pp
 
+cst_binops = {
+    "Multiply": "__mul__",
+    "Power": "__pow__",
+    "FloorDivide": "__floordiv__",
+    "Divide": "__truediv__",
+    "Modulo": "__mod__",
+    "Add": "__add__",
+    "Subtract": "__sub__",
+    "LeftShift": "__lshift__",
+    "RightShift": "__rshift__",
+    "BitOr": "__or__",
+    "BitXor": "__xor__",
+    "BitAnd": "__and__",
+    "MatrixMultiply": "__matmul__",
+    "LessThan": "__lt__",
+    "GreaterThan": "__gt__",
+    "Equal": "__eq__",
+    "LessThanOrEqual": "__le__",
+    "GreaterThanOrEqual": "__ge__",
+    "NotEqual": "__ne__",
+}
+
 def classname(obj):
     return obj.__class__.__name__
 
@@ -21,6 +43,13 @@ class Parser:
         return self(node.target)
     def parse_Attribute(self, node):
         return AST(".", self(node.value), self(node.attr))
+    def parse_BinaryOperation(self, node):
+        cls = classname(node.operator)
+        if cls in cst_binops:
+            return AST("." + cst_binops[cls], self(node.left), self(node.right))
+        else:
+            print(node)
+            raise Exception("Unknown binary operator", node)
     def parse_BooleanOperation(self, node):
         if isinstance(node.operator, cst.And):
             return AST("and", self(node.left), self(node.right))
@@ -129,6 +158,17 @@ class Parser:
         assert(len(node.slice) == 1)
         assert(isinstance(node.slice[0], cst.SubscriptElement))
         return AST(".__getitem__", self(node.value), self(node.slice[0].slice))
+    def parse_UnaryOperation(self, node):
+        if isinstance(node.operator, cst.Minus):
+            return AST(".__neg__", self(node.expression))
+        elif isinstance(node.operator, cst.Plus):
+            return AST(".__pos__", self(node.expression))
+        elif isinstance(node.operator, cst.BitInvert):
+            return AST(".__invert__", self(node.expression))
+        elif isinstance(node.operator, cst.Not):
+            return AST(".__not__", self(node.expression))
+        else:
+            raise Exception("Unknown unary operator", node)
     def __call__(self, node):
         node_type = classname(node)
         handler = getattr(self, "parse_" + node_type, None)

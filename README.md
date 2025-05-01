@@ -27,6 +27,118 @@ Vision:
 - AST should be as simple as possible, – everything that behaves like method-calls should be method-calls, everything that could be variables should be variables etc.
 # Specification
 
+## Unary operators
+
+Unary `+` omitted until there is a concrete use case for it.
+
+```python
+-4
+~123
++42
+not False
+```
+
+```AST
+(.__neg__ 4)
+(.__invert__ 123)
+(.__pos__ 42)
+(.__not__ False)
+```
+
+```js
+(4).__neg__();
+(123).__invert__();
+(42).__pos__();
+false.__not__();
+```
+
+## Binary operators
+
+```python
+a * b 
+a ** b 
+a // b 
+a / b 
+a % b 
+a + b 
+a - b 
+a << b
+a >> b
+a | b
+a ^ b
+a & b
+a @ b
+```
+
+```AST
+(.__mul__ a b)
+(.__pow__ a b)
+(.__floordiv__ a b)
+(.__truediv__ a b)
+(.__mod__ a b)
+(.__add__ a b)
+(.__sub__ a b)
+(.__lshift__ a b)
+(.__rshift__ a b)
+(.__or__ a b)
+(.__xor__ a b)
+(.__and__ a b)
+(.__matmul__ a b)
+```
+
+```js
+a.__mul__(b);
+a.__pow__(b);
+a.__floordiv__(b);
+a.__truediv__(b);
+a.__mod__(b);
+a.__add__(b);
+a.__sub__(b);
+a.__lshift__(b);
+a.__rshift__(b);
+a.__or__(b);
+a.__xor__(b);
+a.__and__(b);
+a.__matmul__(b);
+```
+
+## Comparison
+
+```
+a < b
+a > b
+a == b
+a >= b
+a <= b
+a != b
+a is b
+a is not b
+a in b
+a not in b
+
+(.__lt__ a b)
+(.__gt__ a b)
+(.__eq__ a b)
+(.__le__ a b)
+(.__ge__ a b)
+(.__ne__ a b)
+(.__is a b)
+(.__isnot a b)
+(.__contains__ b a)
+(.__not__ (.__contains__ b a))
+
+a.__lt__(b);
+a.__gt__(b);
+a.__eq__(b);
+a.__le__(b);
+a.__ge__(b);
+a.__ne__(b);
+a === b;
+a !== b;
+a.__contains__(b);
+a.__contains__(b).__not__();
+```
+
 ## Assignment
 
 variables should be assigned as local vars with var the first time it is seen within a scope, to has similar semantics as python
@@ -57,7 +169,7 @@ function bar() {
 
 ## Imports
 
-Should be able to impor modules as:
+Should be able to import modules as:
 
 ```python
 import foo

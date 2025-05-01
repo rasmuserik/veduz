@@ -85,9 +85,9 @@ class Compiler:
         return "import {" + ", ".join(self(child) for child in ast.children[1:]) + '} from "@/' + ast.children[0] + '"'
     def compile_method_call(self, ast):
         method = ast.type[1:]
-        return self(ast.children[0]) + "." + method + "(" + ", ".join(self(child) for child in ast.children[1:]) + ")"
+        return "(" + self(ast.children[0]) + ")." + method + "(" + ", ".join(self(child) for child in ast.children[1:]) + ")"
     def compile_module(self, ast):
-        return "\n".join(self(child) for child in ast.children)
+        return ";\n".join(self(child) for child in ast.children)
     def compile_name(self, ast):
         assert(len(ast.children) == 1)
         if(name_map.get(ast.children[0])):
@@ -106,10 +106,10 @@ class Compiler:
         assert(len(ast.children) == 1)
         return "..." + self(ast.children[0])
     def method___call__(self, ast):
-        prefix = ""
+        prefix = "("
         if(ast.children[0].type == "name" and ast.children[0].children[0][0].isupper()):
-            prefix = "new "
-        return prefix + self(ast.children[0]) + "(" + ", ".join(self(child) for child in ast.children[1:]) + ")"
+            prefix = "new ("
+        return prefix + self(ast.children[0]) + ")(" + ", ".join(self(child) for child in ast.children[1:]) + ")"
     def __call__(self, ast):
         if(isinstance(ast, str)):
             return json.dumps(ast)
