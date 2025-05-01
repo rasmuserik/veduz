@@ -3,6 +3,7 @@
     "prettier": "^3.5.3"
   },
   "scripts": {
-    "spec-coverage": "coverage run src/mupyjs/main.py && coverage html && npx live-server htmlcov/"
+    "spec-coverage": "coverage run src/mupyjs/main.py && coverage html && npx live-server htmlcov/",
+    "test": "npx nodemon -w src/mupyjs -w README.md --exec python src/mupyjs/run_tests.py" 
   }
 }
