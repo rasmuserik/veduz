@@ -1,7 +1,5 @@
-from mupyjs.AST import AST, pp
 import json
-def classname(obj):
-    return obj.__class__.__name__
+from mupyjs.AST import AST, pp
 
 class CompileError(Exception):
     def __init__(self, message):

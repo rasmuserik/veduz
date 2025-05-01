@@ -10,15 +10,6 @@ class AST:
         else:
             self.meta = {}
             self.children = children
-    def to_list(self):
-        def ast_to_list(obj):
-            return obj if isinstance(obj, str) else obj.to_list()
-        result = [self.type]
-        for name, value in self.annotations.items():
-            result.append([name, *map(ast_to_list, value if isinstance(value, list) else [value])])
-        for child in self.children:
-            result.append(ast_to_list(child))
-        return result
 
 def ast_to_pplist(ast):
     if isinstance(ast, str):
@@ -87,13 +78,3 @@ def parse_pp(str):
         result.append(first)
         str = rest
     return AST("module", *result)
-
-
-if __name__ == "__main__":
-    print(pp(parse_pp("""
-(define (factorial n)
-  (if (<= n 1)
-      1
-      (* n (factorial (- n 1))))))
-""")))
-

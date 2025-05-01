@@ -1,5 +1,5 @@
-from mupyjs.AST import AST
 import libcst as cst
+from mupyjs.AST import AST
 
 def classname(obj):
     return obj.__class__.__name__
@@ -99,7 +99,7 @@ class Parser:
         assert(isinstance(node.slice[0], cst.SubscriptElement))
         return AST(".__getitem__", self(node.value), self(node.slice[0].slice))
     def __call__(self, node):
-        node_type = node.__class__.__name__
+        node_type = classname(node)
         handler = getattr(self, "parse_" + node_type, None)
         if handler:
             return handler(node)
