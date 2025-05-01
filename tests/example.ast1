@@ -1,0 +1,20 @@
+(module
+  (class
+    AST
+    (fn
+      __init__
+      (arg self)
+      (arg type)
+      (arg (splat children))
+      (.__setattr__ self "type" type)
+      (if
+        (and children (.__call__ isinstance (.__getitem__ children 0) dict))
+        (do
+          (.__setattr__ self "annotations" (.__getitem__ children 0))
+          (.__setattr__
+            self
+            "children"
+            (.__getitem__ children (.__call__ slice 1 None None))))
+        (do
+          (.__setattr__ self "annotations" (dict))
+          (.__setattr__ self "children" children))))))

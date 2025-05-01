@@ -1,13 +1,12 @@
+from mupyjs.pass1 import pass1
+from mupyjs.AST import pp, parse_pp
+from mupyjs.parser import parse, ParseError
+from mupyjs.compiler import CompileError, compile
 import re
 import subprocess
 import time
 import sys
-
-from mupyjs.AST import pp, parse_pp
-from mupyjs.parser import parse, ParseError
-from mupyjs.pass1 import pass1
 from mupyjs.prettier import prettier
-from mupyjs.compiler import CompileError, compile
 
 def run_markdown_tests(fname):
     doc_sections = open(fname, "r").read().split('```')
