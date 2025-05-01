@@ -5,13 +5,6 @@ Minimal Python subset that translate to modern JavaScript
 
 Motivation/design choices
 
-Initial Roadmap/tasks
-- [x] initial parser
-- [x] AST-prettyprinter
-- [x] run example from README.md
-- [ ] initial compiler
-- [ ] JS prettier service
-- [ ] test examples from README.md
 
 Vision:
 
@@ -23,6 +16,64 @@ Vision:
 	- partial evaluation
 - two-way, also to/from JS+types (µTS)
 
+
+# Design goal
+- Mypyjs programs must be valid Python program.
+- Only a small subset of python, that can run efficientlyt on JS-engines, are implemented. Full python compatibility is a non-goal.
+# Specification
+
+## Functions
+
+Arguments are either positional or keyword, and cannot be both:
+
+```python
+def foo(a, b, *, d, e):
+	pass
+```
+
+```AST
+(fn foo (arg a) (arg b) (kwarg d) (kwarg e))
+```
+
+```js
+function foo(a, b, {d, e}) {
+}
+```
+
+Kwargs are passed as last argument if present in the function call. Includes special property `{_kwargs: true}` similar to transcrypt.
+
+```python
+foo(123, c="hello")
+```
+
+```AST
+(.__call__ foo 123 (dict "_kwargs" True "c" "hello"))
+```
+
+```js
+foo(123, {_kwargs: true, c: "hello"})
+```
+"Functions" that starts with an uppecase letter are constructors, and invoked with `new` under JavaScript
+
+```python
+SomeClass(123)
+```
+
+```AST
+(.__call__ SomeClass 123)
+```
+
+```js
+new SomeClass(123)
+```
+
+"Functions" are either methods (with `self` as first parameter) or functions, and cannot be called in both ways.
+
+
+
+# Similar initiatives and differences
+
+- https://www.transcrypt.org almost but not quite what I want. Main difference is that transcrypt is more mature, but less optimised. Some APIs and approaches here are inspired by transcrypt
 
 
 # AST
@@ -49,9 +100,9 @@ baz("foo", bar=123)
 ```
 
 ```AST
-(call foo blah (splat args))
-(call bar (dict "_kwargs" True (splat kwargs)))
-(call baz "foo" (dict "_kwargs" True "bar" 123))
+(.__call__ foo blah (splat args))
+(.__call__ bar (dict "_kwargs" True (splat kwargs)))
+(.__call__ baz "foo" (dict "_kwargs" True "bar" 123))
 ```
 
 ```js
@@ -104,7 +155,7 @@ print("hello world")
 ```
 
 ```AST
-(call print "hello world")
+(.__call__ print "hello world")
 ```
 
 ```js
@@ -242,3 +293,13 @@ type-annotations: cast(type, expr)
 Library
 - slice
 - isinstance
+
+# Changelog
+
+## 2024-05- Version 0.1
+- [x] initial parser
+- [x] AST-prettyprinter
+- [x] run example from README.md
+- [x] initial compiler
+- [x] JS prettier service
+- [x] test examples from README.md

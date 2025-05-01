@@ -1,6 +1,7 @@
+from mupyjs.pass1 import pass1
 from mupyjs.AST import pp, parse_pp
 from mupyjs.parser import parse, ParseError
-from mupyjs.compiler import Compiler, CompileError
+from mupyjs.compiler import Compiler, CompileError, compile
 import re
 import requests
 import subprocess
@@ -27,13 +28,17 @@ def run_markdown_tests(fname):
     print(f"Running {len(tests)} tests from README.md\n--------------------------------")
     correct = 0
     for i, test in enumerate(tests, 1):
-        print(f"TEST {i} running\n{test[1]}")
+        print(f"TEST {i} running")
         try:
             ast = parse(test[1])
+            ast = pass1(ast)
+            print(test[1],"\n--------------------------------")
             py_ppast = pp(ast)
+            print(py_ppast,"\n--------------------------------")
             ast_ppast = pp(parse_pp(test[2]))
             compiled_js = Compiler()(ast)
             expected_js_formatted = prettier(test[3])
+            print(ast_ppast,"\n--------------------------------")
             compiled_js_formatted = prettier(compiled_js)
             if py_ppast != ast_ppast:
                 return print(f"TEST {i} AST fail:\n{test[1]}\nEXPECTED:\n{ast_ppast}\nGOT:\n{py_ppast}")

@@ -4,11 +4,11 @@ import re
 class AST:
     def __init__(self, type, *children):
         self.type = type
-        if children and isinstance(children[0], dict):
-            self.annotations = children[0]
+        if(len(children) > 0 and isinstance(children[0], dict)):    
+            self.meta = children[0]
             self.children = children[1:]
         else:
-            self.annotations = {}
+            self.meta = {}
             self.children = children
     def to_list(self):
         def ast_to_list(obj):

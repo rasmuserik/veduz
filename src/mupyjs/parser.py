@@ -40,7 +40,7 @@ class Parser:
                 args.append(self(arg.value))
         if len(kwargs) > 0:
             args.append(AST("dict", "_kwargs", AST("name", "True"), *kwargs))
-        return AST("call", self(node.func), *args)
+        return AST(".__call__", self(node.func), *args)
     def parse_ClassDef(self, node):
         assert(isinstance(node.body, cst.IndentedBlock))
         return AST("class", self(node.name), *map(self, node.body.body))
@@ -53,17 +53,16 @@ class Parser:
         assert(isinstance(node.params, cst.Parameters))
         assert(isinstance(node.body, cst.IndentedBlock))
 
-        params = [AST("arg", self(param.name), self(param.default)) for param in (node.params.params or ()) + (node.params.posonly_params or ())]
-        if node.params.star_arg:
+        params = []
+        for param in (node.params.params or ()) + (node.params.posonly_params or ()):
+            params.append(AST(*["arg", self(param.name)] + ([self(param.default)] if param.default else [])))
+        if node.params.star_arg and isinstance(node.params.star_arg, cst.Param):
             params.append(AST("arg", AST("splat", self(node.params.star_arg.name))))
-        if node.params.kwonly_params or node.params.star_kwarg:
-            kwparams = []
+        if node.params.kwonly_params:
             for param in node.params.kwonly_params or ():
-                kwparams.append(self(param.name.value))
-                kwparams.append(self(param.default))
-            if node.params.star_kwarg:
-                kwparams.append(AST("splat", self(node.params.star_kwarg.name)))
-            params.append(AST("arg", AST("dict", *kwparams)))
+                params.append(AST(*["kwarg", self(param.name)] + ([self(param.default)] if param.default else [])))
+        if node.params.star_kwarg:
+            params.append(AST("kwarg", AST("splat", self(node.params.star_kwarg.name))))
         return AST("fn", self(node.name), *params, *map(self, node.body.body))
     def parse_If(self, node):
         args = ["if", self(node.test), self(node.body)]
@@ -86,13 +85,15 @@ class Parser:
         return AST("name", node.value)
     def parse_NoneType(self, node):
         return AST("name", "None")
+    def parse_Pass(self, node):
+        return AST("name", "pass")
     def parse_SimpleStatementLine(self, node):
         assert(len(node.body) == 1)
         return self(node.body[0])
     def parse_SimpleString(self, node):
         return node.value[1:-1]
     def parse_Slice(self, node):
-        return AST("call", AST("name", "slice"), self(node.lower), self(node.upper), self(node.step))
+        return AST(".__call__", AST("name", "slice"), self(node.lower), self(node.upper), self(node.step))
     def parse_Subscript(self, node):
         assert(len(node.slice) == 1)
         assert(isinstance(node.slice[0], cst.SubscriptElement))
