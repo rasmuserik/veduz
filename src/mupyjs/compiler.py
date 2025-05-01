@@ -14,8 +14,22 @@ name_map = {
 }
 
 class Compiler:
+    def __init__(self):
+        self.compiling_class = False
+    def compile_arg(self, ast):
+        return self(ast.children[0])
+    def compile_and(self, ast):
+        return "(" + self(ast.children[0]) + "&&" + self(ast.children[1]) + ")"
     def compile_call(self, ast):
         return self(ast.children[0]) + "(" + ", ".join(self(child) for child in ast.children[1:]) + ")"
+    def compile_class(self, ast):
+        self.compiling_class = True
+        result = "class " + self(ast.children[0]) + "{"
+        for child in ast.children[1:]:
+            if(child.type == "fn" and child.children[0].children[0] == "__init__"):
+                child = AST("fn", AST("name", "constructor"), *child.children[1:])
+            result += self(child)
+        return result + "}"
     def compile_dict(self, ast):
         children = [];
         i = 0;
@@ -28,6 +42,37 @@ class Compiler:
                 children.append(self(ast.children[i]))
                 i += 1;
         return "{" + ", ".join(children) + "}"
+    def compile_do(self, ast):
+        return ";".join(map(self, ast.children[1:]))
+    def compile_fn(self, ast):
+        compiling_class = self.compiling_class
+        self.compiling_class = False
+        result = "" if compiling_class else "function "
+        i = 1
+        args = []
+        set_self = "";
+        while(i < len(ast.children) and ast.children[i].type == "arg"):
+            if ast.children[i].children[0].children[0] == "self":
+                set_self = "const self = this;"
+            else:
+                args.append(self(ast.children[i]))
+            i += 1
+        result += self(ast.children[0]) + "(" + ",".join(args) + "){" + set_self
+        while(i < len(ast.children)):
+            result += self(ast.children[i]) + ";"
+            i += 1
+        result += "}"
+        self.compiling_class = compiling_class
+        return result;
+    def compile_if(self, ast):
+        return "if(" + self(ast.children[0]) + "){" + self(ast.children[1]) + "}"
+        i = 2
+        while(i < len(ast.children) - 1):
+            result += "else if(" + self(ast.children[i]) + "){" + self(ast.children[i + 1]) + "}"
+            i += 2
+        if(i < len(ast.children)):
+            result += "else{" + self(ast.children[i]) + "}"
+        return result
     def compile_method_call(self, ast):
         method = ast.type[1:]
         return self(ast.children[0]) + "." + method + "(" + ", ".join(self(child) for child in ast.children[1:]) + ")"

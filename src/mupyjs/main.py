@@ -5,6 +5,7 @@ import re
 import requests
 import subprocess
 import time
+import sys
 
 def prettier(code):
     response = requests.post('http://localhost:9696/format', data=code)
@@ -49,12 +50,21 @@ def run_markdown_tests(fname):
 def main():
     prettier_server = subprocess.Popen(['node', 'src/mupyjs/prettier_server.js'])
     time.sleep(0.1)
-    
+    filename = sys.argv[1] if len(sys.argv) > 1 else "README.md"
+
     try:
-        run_markdown_tests("README.md")
+        if filename.endswith('.md'):
+            run_markdown_tests(filename)
+        if filename.endswith('.py'):
+            src = open(filename, 'r').read()
+            ast = parse(src)
+            print(src,"\n--------------------------------")
+            print(pp(ast),"\n--------------------------------")
+            print(prettier(Compiler()(ast)))
+    except (ParseError, CompileError) as e:
+        sys.exit(f"{type(e).__name__}: {e}")
     finally:
         prettier_server.terminate()
-        prettier_server.wait()
 
 if __name__ == "__main__":
     main()
