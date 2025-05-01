@@ -16,10 +16,15 @@ Vision:
 	- partial evaluation
 - two-way, also to/from JS+types (µTS)
 
+# Milestones
+- [x] 0.0.1 Compile + compare examples from spec
+- [ ] 0.0.2 Compile snapshot of itself
+- [ ] 0.0.3 Run partial snapshot of itself
 
 # Design goal
 - Mypyjs programs must be valid Python program.
 - Only a small subset of python, that can run efficientlyt on JS-engines, are implemented. Full python compatibility is a non-goal.
+- AST should be as simple as possible, – everything that behaves like method-calls should be method-calls, everything that could be variables should be variables etc.
 # Specification
 
 ## Functions
@@ -69,7 +74,22 @@ new SomeClass(123)
 
 "Functions" are either methods (with `self` as first parameter) or functions, and cannot be called in both ways.
 
+```python
+def foo(self):
+	pass
+def foo(blah):
+	pass
+```
 
+```AST
+(fn foo (arg self))
+(fn foo (arg blah))
+```
+
+```js
+function foo() { const self = this; }
+function foo(blah) { }
+```
 
 # Similar initiatives and differences
 
