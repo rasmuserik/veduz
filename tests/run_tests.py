@@ -1,4 +1,4 @@
-import os
+import os as os
 import glob
 import sys
 from mupyjs.main import prettier
@@ -34,4 +34,5 @@ if __name__ == "__main__":
         try:
             run_test(test_file)
         except Exception as e:
+            print(e)
             print(f"Error running test {test_file}: {e}")

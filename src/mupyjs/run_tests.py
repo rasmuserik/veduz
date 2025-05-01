@@ -1,9 +1,11 @@
 import glob
+import sys
 from mupyjs.main import prettier
 from mupyjs.pass1 import pass1
 from mupyjs.parser import parse
 from mupyjs.compiler import compile
 from mupyjs.AST import pp
+from mupyjs.main import run_markdown_tests
 
 def write_file(name, src):
     file = open(name, 'w')
@@ -24,10 +26,13 @@ def run_test(test_file):
     write_file(prefix + '.js', js)
 
 if __name__ == "__main__":
+    run_markdown_tests("README.md")
     test_files = glob.glob('./tests/**/*.py', recursive=True)
+    rest_files = reversed(test_files)
     print(test_files)
-    for test_file in test_files:
+    for test_file in rest_files:
         try:
             run_test(test_file)
         except Exception as e:
             print(f"Error running test {test_file}: {e}")
+            raise e

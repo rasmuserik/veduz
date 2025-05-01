@@ -1,5 +1,5 @@
 import libcst as cst
-from mupyjs.AST import AST
+from mupyjs.AST import AST, pp
 
 def classname(obj):
     return obj.__class__.__name__
@@ -11,12 +11,16 @@ class ParseError(Exception):
 class Parser:
     def parse_Assign(self, node):
         assert(len(node.targets) == 1)
-        if isinstance(node.targets[0], cst.AssignTarget):
+        if isinstance(node.targets[0].target, cst.Attribute):
             assert(isinstance(node.targets[0].target, cst.Attribute))
             assert(isinstance(node.targets[0].target.attr, cst.Name))
             return AST(".__setattr__", self(node.targets[0].target.value), node.targets[0].target.attr.value, self(node.value))
         else:
             return AST("set", self(node.targets[0]), self(node.value))
+    def parse_AssignTarget(self, node):
+        return self(node.target)
+    def parse_Attribute(self, node):
+        return AST(".", self(node.value), self(node.attr))
     def parse_BooleanOperation(self, node):
         if isinstance(node.operator, cst.And):
             return AST("and", self(node.left), self(node.right))
@@ -77,6 +81,33 @@ class Parser:
         return AST("do", *map(self, node.body))
     def parse_Index(self, node):
         return self(node.value)
+    def helper_Import_names(self, namenode):
+        if isinstance(namenode, cst.Attribute):
+            asname = namenode.attr
+            name = ""
+            while isinstance(namenode, cst.Attribute):
+                name = namenode.attr.value + "/" + name
+                namenode = namenode.value
+            name = namenode.value + "/" + name[:-1]
+        else:
+            name = namenode.value
+            asname = namenode
+        return [name, asname]
+    def parse_Import(self, node):
+        assert(isinstance(node.names[0], cst.ImportAlias))
+        assert(len(node.names) == 1)
+        [name, asname] = self.helper_Import_names(node.names[0].name)
+        if node.names[0].asname:
+            asname = node.names[0].asname.name
+        return AST("import_as", name, self(asname))
+    def parse_ImportFrom(self, node):
+        [name, asname] = self.helper_Import_names(node.module)
+        module = name
+        vars = []
+        for name in node.names:
+            assert(not name.asname)
+            vars.append(self(name.name))
+        return AST("import_from", module, *vars)
     def parse_Integer(self, node):
         return AST("num", node.value)
     def parse_Module(self, node):

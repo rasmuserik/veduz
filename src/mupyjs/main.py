@@ -38,19 +38,22 @@ def run_markdown_tests(fname):
             print(ast_ppast,"\n--------------------------------")
             compiled_js_formatted = prettier(compiled_js)
             if py_ppast != ast_ppast:
-                return print(f"TEST {i} AST fail:\n{test[1]}\nEXPECTED:\n{ast_ppast}\nGOT:\n{py_ppast}")
+                print(f"TEST {i} AST fail:\n{test[1]}\nEXPECTED:\n{ast_ppast}\nGOT:\n{py_ppast}")
+                sys.exit(1)
             if expected_js_formatted != compiled_js_formatted:
-                return print(f"TEST {i} Compile fail:\n{test[1]}\nAST:\n{py_ppast}\n\nEXPECTED:\n{expected_js_formatted}\nGOT:\n{compiled_js_formatted}")
+                print(f"TEST {i} Compile fail:\n{test[1]}\nAST:\n{py_ppast}\n\nEXPECTED:\n{expected_js_formatted}\nGOT:\n{compiled_js_formatted}")
+                sys.exit(1)
             print(f"=>\n\n{compiled_js_formatted}\nTEST {i} Passed\n--------------------------------")
             correct += 1
         except ParseError as e:
-            return print(f"ParseError: {e}")
+            print(f"ParseError: {e}")
+            sys.exit(1)
         except CompileError as e:
-            return print(f"CompileError: {e}")
+            print(f"CompileError: {e}")
+            sys.exit(1)
     print(f"TESTS PASSED: {correct}/{len(tests)}")
 
 def main():
-    prettier_server = subprocess.Popen(['node', 'src/mupyjs/prettier_server.js'])
     time.sleep(0.1)
     filename = sys.argv[1] if len(sys.argv) > 1 else "README.md"
 

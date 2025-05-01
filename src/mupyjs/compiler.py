@@ -79,6 +79,10 @@ class Compiler:
         if(i < len(ast.children)):
             result += "else{" + self(ast.children[i]) + "}"
         return result
+    def compile_import_as(self, ast):
+        return "import * as " + self(ast.children[1]) + ' from "@/' + ast.children[0] + '"'
+    def compile_import_from(self, ast):
+        return "import {" + ", ".join(self(child) for child in ast.children[1:]) + '} from "@/' + ast.children[0] + '"'
     def compile_method_call(self, ast):
         method = ast.type[1:]
         return self(ast.children[0]) + "." + method + "(" + ", ".join(self(child) for child in ast.children[1:]) + ")"
@@ -92,6 +96,12 @@ class Compiler:
     def compile_num(self, ast):
         assert(len(ast.children) == 1)
         return str(ast.children[0])
+    def compile_set(self, ast):
+        print("HERE", pp(ast), ast.meta)
+        vartype = ""
+        if "vartype" in ast.meta:
+            vartype = ast.meta["vartype"] + " "
+        return vartype + self(ast.children[0]) + " = " + self(ast.children[1])
     def compile_splat(self, ast):
         assert(len(ast.children) == 1)
         return "..." + self(ast.children[0])

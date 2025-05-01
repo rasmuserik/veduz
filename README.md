@@ -27,6 +27,59 @@ Vision:
 - AST should be as simple as possible, – everything that behaves like method-calls should be method-calls, everything that could be variables should be variables etc.
 # Specification
 
+## Assignment
+
+variables should be assigned as local vars with var the first time it is seen within a scope, to has similar semantics as python
+
+```python
+foo = 123
+foo = bar(baz)
+
+def bar():
+	foo = 432
+	foo = "hello"
+```
+
+```AST
+(set foo 123)
+(set foo (.__call__ bar baz))
+(fn bar (set foo 432) (set foo "hello"))
+```
+
+```js
+var foo = 123;
+foo = bar(baz);
+function bar() {
+	var foo = 432;
+	foo = "hello";
+}
+```
+
+## Imports
+
+Should be able to impor modules as:
+
+```python
+import foo
+import foo.bar.baz
+import foo as bar
+from foo.bar import x, y, z
+```
+
+```AST
+(import_as "foo" foo)
+(import_as "foo/bar/baz" baz)
+(import_as "foo" bar)
+(import_from "foo/bar" x y z)
+```
+
+```js
+import * as foo from "@/foo"
+import * as baz from "@/foo/bar/baz"
+import * as bar from "@/foo"
+import {x, y, z} from "@/foo/bar"
+```
+
 ## Functions
 
 Arguments are either positional or keyword, and cannot be both:
