@@ -1,7 +1,7 @@
 from mupyjs.pass1 import pass1
 from mupyjs.AST import pp, parse_pp
 from mupyjs.parser import parse, ParseError
-from mupyjs.compiler import Compiler, CompileError, compile
+from mupyjs.compiler import CompileError, compile
 import re
 import requests
 import subprocess
@@ -36,7 +36,7 @@ def run_markdown_tests(fname):
             py_ppast = pp(ast)
             print(py_ppast,"\n--------------------------------")
             ast_ppast = pp(parse_pp(test[2]))
-            compiled_js = Compiler()(ast)
+            compiled_js = compile(ast)
             expected_js_formatted = prettier(test[3])
             print(ast_ppast,"\n--------------------------------")
             compiled_js_formatted = prettier(compiled_js)
@@ -63,9 +63,10 @@ def main():
         if filename.endswith('.py'):
             src = open(filename, 'r').read()
             ast = parse(src)
+            ast = pass1(ast)
             print(src,"\n--------------------------------")
             print(pp(ast),"\n--------------------------------")
-            print(prettier(Compiler()(ast)))
+            print(prettier(compile(ast)))
     except (ParseError, CompileError) as e:
         sys.exit(f"{type(e).__name__}: {e}")
     finally:
