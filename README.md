@@ -41,7 +41,7 @@ some_name
 ```
 ### Literal `(num "123")` or `"str"`
 
-### function-call
+### Function calls
 ```python
 foo(blah, *args)
 bar(**kwargs)
@@ -56,8 +56,8 @@ baz("foo", bar=123)
 
 ```js
 foo(blah, ...args)
-bar({...kwargs})
-baz(foo, {_kwargs: true, bar: 123})
+bar({"_kwargs": true, ...kwargs})
+baz("foo", {"_kwargs": true, bar: 123})
 ```
 ### methodcall `(.`_methodName_` obj ..args)`
 - `call obj method args()` sugar: `obj.method(arg-seq)`

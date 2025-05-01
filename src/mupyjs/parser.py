@@ -4,6 +4,10 @@ import libcst as cst
 def classname(obj):
     return obj.__class__.__name__
 
+class ParseError(Exception):
+    def __init__(self, message):
+        self.message = message
+
 class Parser:
     def parse_Assign(self, node):
         assert(len(node.targets) == 1)
@@ -101,8 +105,7 @@ class Parser:
         else:
             print(node);
             error = f"No handler for {node_type}"
-            print(error)
-            return AST("parse_error", error)
+            raise ParseError(error)
 
 def parse(src):
     return Parser()(cst.parse_module(src))
