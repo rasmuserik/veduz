@@ -1,4 +1,4 @@
-(module
+(do
   (class
     AST
     (fn
@@ -17,4 +17,11 @@
             (.__getitem__ children (.__call__ slice 1 None None))))
         (do
           (.__setattr__ self "annotations" (.__dict))
-          (.__setattr__ self "children" children))))))
+          (.__setattr__ self "children" children)))))
+  (fn
+    fib
+    (arg n)
+    (if (.__le__ n 1) (return n))
+    (return
+      (.__add__ (.__call__ fib (.__sub__ n 1)) (.__call__ fib (.__sub__ n 2)))))
+  (.__call__ print (.__call__ fib 32)))

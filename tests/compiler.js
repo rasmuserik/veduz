@@ -1,5 +1,7 @@
+import { print } from './runtime.js';
 import * as json from '@/json';
 import { AST, pp } from '@/mupyjs/AST';
+import { legal_method_name } from '@/mupyjs/utils';
 class CompileError {
   constructor(message) {
     const self = this;
@@ -29,12 +31,13 @@ class Compiler {
     const self = this;
     return '('
       .__add__(self(ast.children.__getitem__(0)))
-      .__add__('&&')
+      .__add__(')&&(')
       .__add__(self(ast.children.__getitem__(1)))
       .__add__(')');
   }
   compile_class(ast) {
     const self = this;
+    var compiling_class = self.compiling_class;
     self['compiling_class'] = true;
     var result = 'class '
       .__add__(self(ast.children.__getitem__(0)))
@@ -55,31 +58,12 @@ class Compiler {
         );
       }
     }
+    self['compiling_class'] = compiling_class;
     return result.__add__('}');
-  }
-  compile_dict(ast) {
-    const self = this;
-    var children = [];
-    var i = 0;
-    while (i.__lt__(len(ast.children))) {
-      if (isinstance(ast.children.__getitem__(i), str)) {
-        children.append(
-          self(ast.children.__getitem__(i))
-            .__add__(':')
-            .__add__(self(ast.children.__getitem__(i.__add__(1))))
-        );
-        i = i.__add__(2);
-      } else {
-        assert((ast.children.__getitem__(i).type ?? Nil).__eq__('splat'));
-        children.append(self(ast.children.__getitem__(i)));
-        i = i.__add__(1);
-      }
-    }
-    return '{'.__add__(', '.join(children)).__add__('}');
   }
   compile_do(ast) {
     const self = this;
-    return ';'.join(map(self, ast.children));
+    return ';\\n'.join(map(self, ast.children));
   }
   compile_fn(ast) {
     const self = this;
@@ -101,7 +85,7 @@ class Compiler {
             .children.__getitem__(0) ?? Nil
         ).__eq__('self')
       ) {
-        set_self = 'const self = this;';
+        set_self = 'const self = this;\\n';
       } else {
         args.append(self(ast.children.__getitem__(i)));
       }
@@ -133,7 +117,9 @@ class Compiler {
         .__add__(set_self)
     );
     while (i.__lt__(len(ast.children))) {
-      result = result.__add__(self(ast.children.__getitem__(i)).__add__(';'));
+      result = result.__add__(
+        self(ast.children.__getitem__(i)).__add__(';\\n')
+      );
       i = i.__add__(1);
     }
     result = result.__add__('}');
@@ -156,6 +142,34 @@ class Compiler {
       .__add__('){')
       .__add__(self(ast.children.__getitem__(1)))
       .__add__('}');
+  }
+  compile_generator(ast) {
+    const self = this;
+    var result = '(function*(){\\n';
+    for (var child of ast.children.__getitem__(
+      slice(1, undefined, undefined)
+    )) {
+      if ((child.type ?? Nil).__eq__('iter')) {
+        result = result.__add__(
+          'for(const '
+            .__add__(self(child.children.__getitem__(0)))
+            .__add__(' of ')
+            .__add__(self(child.children.__getitem__(1)))
+            .__add__(')\\n')
+        );
+      } else {
+        result = result.__add__('if('.__add__(self(child)).__add__(')\\n'));
+      }
+    }
+    result = result.__add__(
+      'yield '.__add__(self(ast.children.__getitem__(0))).__add__(';\\n')
+    );
+    result = result.__add__('})()');
+    return result;
+  }
+  compile_global(ast) {
+    const self = this;
+    return '';
   }
   compile_if(ast) {
     const self = this;
@@ -182,6 +196,16 @@ class Compiler {
     }
     return result;
   }
+  compile_ifelse(ast) {
+    const self = this;
+    return '('
+      .__add__(self(ast.children.__getitem__(0)))
+      .__add__(')?(')
+      .__add__(self(ast.children.__getitem__(1)))
+      .__add__('):(')
+      .__add__(self(ast.children.__getitem__(2)))
+      .__add__(')');
+  }
   compile_import_as(ast) {
     const self = this;
     return 'import * as '
@@ -207,6 +231,27 @@ class Compiler {
       .__add__(ast.children.__getitem__(0))
       .__add__('"');
   }
+  compile_kwargs(ast) {
+    const self = this;
+    var children = [];
+    var i = 0;
+    while (i.__lt__(len(ast.children))) {
+      if (isinstance(ast.children.__getitem__(i), str)) {
+        children.append(
+          self(ast.children.__getitem__(i))
+            .__add__(':')
+            .__add__(self(ast.children.__getitem__(i.__add__(1))))
+        );
+        i = i.__add__(2);
+      } else {
+        print(pp(ast), i);
+        assert((ast.children.__getitem__(i).type ?? Nil).__eq__('splat'));
+        children.append(self(ast.children.__getitem__(i)));
+        i = i.__add__(1);
+      }
+    }
+    return '{_kwargs:true,'.__add__(', '.join(children)).__add__('}');
+  }
   compile_method_call(ast) {
     const self = this;
     var method = ast.type.__getitem__(slice(1, undefined, undefined));
@@ -227,14 +272,6 @@ class Compiler {
       )
       .__add__(')');
   }
-  compile_module(ast) {
-    const self = this;
-    return ';\\n'.join(
-      (function* () {
-        for (const child of ast.children) yield self(child);
-      })()
-    );
-  }
   compile_name(ast) {
     const self = this;
     assert((len(ast.children) ?? Nil).__eq__(1));
@@ -243,10 +280,26 @@ class Compiler {
     }
     return ast.children.__getitem__(0);
   }
+  compile_nonlocal(ast) {
+    const self = this;
+    return '';
+  }
   compile_num(ast) {
     const self = this;
     assert((len(ast.children) ?? Nil).__eq__(1));
     return str(ast.children.__getitem__(0));
+  }
+  compile_or(ast) {
+    const self = this;
+    return '('
+      .__add__(self(ast.children.__getitem__(0)))
+      .__add__(')||(')
+      .__add__(self(ast.children.__getitem__(1)))
+      .__add__(')');
+  }
+  compile_return(ast) {
+    const self = this;
+    return 'return ('.__add__(self(ast.children.__getitem__(0))).__add__(')');
   }
   compile_set(ast) {
     const self = this;
@@ -278,7 +331,7 @@ class Compiler {
         body.append(child);
       }
     }
-    var result = 'try{'.__add__(';'.join(map(self, body))).__add__('}');
+    var result = 'try{'.__add__(';\\n'.join(map(self, body))).__add__('}');
     if (len(excepts).__gt__(0)) {
       var name = self(excepts.__getitem__(0).children.__getitem__(1));
       result = result.__add__('catch('.__add__(name).__add__('){'));
@@ -298,53 +351,23 @@ class Compiler {
     if (finallyBody) {
       result = result.__add__(
         'finally{'
-          .__add__(';'.join(map(self, finallyBody.children)))
+          .__add__(';\\n'.join(map(self, finallyBody.children)))
           .__add__('}')
       );
     }
     return result;
   }
-  method___eq__(ast) {
+  compile_while(ast) {
     const self = this;
-    return '('
+    return 'while('
       .__add__(self(ast.children.__getitem__(0)))
-      .__add__('??Nil).__eq__(')
-      .__add__(self(ast.children.__getitem__(1)))
-      .__add__(')');
-  }
-  method___ne__(ast) {
-    const self = this;
-    return '('
-      .__add__(self(ast.children.__getitem__(0)))
-      .__add__('??Nil).__ne__(')
-      .__add__(self(ast.children.__getitem__(1)))
-      .__add__(')');
-  }
-  method___is(ast) {
-    const self = this;
-    return '('
-      .__add__(self(ast.children.__getitem__(0)))
-      .__add__(') === (')
-      .__add__(self(ast.children.__getitem__(1)))
-      .__add__(')');
-  }
-  method___fstr(ast) {
-    const self = this;
-    return '+'.join(
-      list(
-        (function* () {
-          for (const child of ast.children) yield self(child);
-        })()
+      .__add__('){')
+      .__add__(
+        ';\\n'.join(
+          map(self, ast.children.__getitem__(slice(1, undefined, undefined)))
+        )
       )
-    );
-  }
-  method___isnot(ast) {
-    const self = this;
-    return '('
-      .__add__(self(ast.children.__getitem__(0)))
-      .__add__(') !== (')
-      .__add__(self(ast.children.__getitem__(1)))
-      .__add__(')');
+      .__add__('}');
   }
   method___call__(ast) {
     const self = this;
@@ -373,6 +396,110 @@ class Compiler {
         )
       )
       .__add__(')');
+  }
+  method___dict(ast) {
+    const self = this;
+    return '__dict('
+      .__add__(
+        ', '.join(
+          list(
+            (function* () {
+              for (const child of ast.children) yield self(child);
+            })()
+          )
+        )
+      )
+      .__add__(')');
+  }
+  method___eq__(ast) {
+    const self = this;
+    return '('
+      .__add__(self(ast.children.__getitem__(0)))
+      .__add__('??Nil).__eq__(')
+      .__add__(self(ast.children.__getitem__(1)))
+      .__add__(')');
+  }
+  method___fstr(ast) {
+    const self = this;
+    return '+'.join(
+      list(
+        (function* () {
+          for (const child of ast.children) yield self(child);
+        })()
+      )
+    );
+  }
+  method___is(ast) {
+    const self = this;
+    return '('
+      .__add__(self(ast.children.__getitem__(0)))
+      .__add__(') === (')
+      .__add__(self(ast.children.__getitem__(1)))
+      .__add__(')');
+  }
+  method___isnot(ast) {
+    const self = this;
+    return '('
+      .__add__(self(ast.children.__getitem__(0)))
+      .__add__(') !== (')
+      .__add__(self(ast.children.__getitem__(1)))
+      .__add__(')');
+  }
+  method___getattr__(ast) {
+    const self = this;
+    if (legal_method_name(ast.children.__getitem__(1))) {
+      return '('
+        .__add__(self(ast.children.__getitem__(0)))
+        .__add__(').')
+        .__add__(ast.children.__getitem__(1));
+    } else {
+      return self.compile_method_call(ast);
+    }
+  }
+  method___list(ast) {
+    const self = this;
+    return '['
+      .__add__(
+        ', '.join(
+          list(
+            (function* () {
+              for (const child of ast.children) yield self(child);
+            })()
+          )
+        )
+      )
+      .__add__(']');
+  }
+  method___ne__(ast) {
+    const self = this;
+    return '('
+      .__add__(self(ast.children.__getitem__(0)))
+      .__add__('??Nil).__ne__(')
+      .__add__(self(ast.children.__getitem__(1)))
+      .__add__(')');
+  }
+  method___setattr__(ast) {
+    const self = this;
+    return '('
+      .__add__(self(ast.children.__getitem__(0)))
+      .__add__(')[')
+      .__add__(self(ast.children.__getitem__(1)))
+      .__add__('] = ')
+      .__add__(self(ast.children.__getitem__(2)));
+  }
+  method___tuple(ast) {
+    const self = this;
+    return '['
+      .__add__(
+        ', '.join(
+          list(
+            (function* () {
+              for (const child of ast.children) yield self(child);
+            })()
+          )
+        )
+      )
+      .__add__(']');
   }
   __call__(ast) {
     const self = this;
@@ -403,4 +530,7 @@ class Compiler {
 }
 function compile(ast) {
   return new Compiler()(ast);
+}
+function compile_import(ast) {
+  return "import {print} from './runtime.js';\\n".__add__(compile(ast));
 }

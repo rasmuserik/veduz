@@ -30,18 +30,6 @@ class Compiler:
             result += self(child)
         self.compiling_class = compiling_class
         return result + "}"
-    def compile_dict(self, ast):
-        children = []
-        i = 0
-        while(i < len(ast.children)):
-            if(isinstance(ast.children[i], str)):
-                children.append(self(ast.children[i]) + ":" + self(ast.children[i + 1]))
-                i += 2
-            else:
-                assert(ast.children[i].type == "splat")
-                children.append(self(ast.children[i]))
-                i += 1
-        return "{" + ", ".join(children) + "}"
     def compile_do(self, ast):
         return ";\n".join(map(self, ast.children))
     def compile_fn(self, ast):
@@ -107,11 +95,22 @@ class Compiler:
         return "import * as " + self(ast.children[1]) + ' from "@/' + ast.children[0] + '"'
     def compile_import_from(self, ast):
         return "import {" + ", ".join(self(child) for child in ast.children[1:]) + '} from "@/' + ast.children[0] + '"'
+    def compile_kwargs(self, ast):
+        children = []
+        i = 0
+        while(i < len(ast.children)):
+            if(isinstance(ast.children[i], str)):
+                children.append(self(ast.children[i]) + ":" + self(ast.children[i + 1]))
+                i += 2
+            else:
+                print(pp(ast), i)
+                assert(ast.children[i].type == "splat")
+                children.append(self(ast.children[i]))
+                i += 1
+        return "{_kwargs:true," + ", ".join(children) + "}"
     def compile_method_call(self, ast):
         method = ast.type[1:]
         return "(" + self(ast.children[0]) + ")." + method + "(" + ", ".join(self(child) for child in ast.children[1:]) + ")"
-    def compile_module(self, ast):
-        return ";\n".join(self(child) for child in ast.children)
     def compile_name(self, ast):
         assert(len(ast.children) == 1)
         if ast.children[0] in name_map:
@@ -206,3 +205,6 @@ class Compiler:
 
 def compile(ast):
     return Compiler()(ast)
+
+def compile_import(ast):
+    return "import {print} from './runtime.js';\n" + compile(ast)

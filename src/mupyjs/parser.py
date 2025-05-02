@@ -92,7 +92,7 @@ class Parser:
             else:
                 args.append(self(arg.value))
         if len(kwargs) > 0:
-            args.append(AST("dict", "_kwargs", AST("name", "True"), *kwargs))
+            args.append(AST("kwargs", *kwargs))
         obj = self(node.func)
         if obj.type == ".__getattr__" and legal_method_name(obj.children[1]):
             return AST("." + obj.children[1], obj.children[0], *args)
@@ -232,7 +232,7 @@ class Parser:
                 result.append(AST("splat", self(elem.value)))
         return AST(*result)
     def parse_Module(self, node):
-        return AST("module", *map(self, node.body))
+        return AST("do", *map(self, node.body))
     def parse_Name(self, node):
         return AST("name", node.value)
     def parse_NameItem(self, node):

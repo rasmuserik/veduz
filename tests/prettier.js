@@ -1,3 +1,4 @@
+import { print } from './runtime.js';
 import * as sys from '@/sys';
 import * as requests from '@/requests';
 import * as subprocess from '@/subprocess';

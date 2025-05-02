@@ -1,9 +1,10 @@
+import { print } from './runtime.js';
 import * as glob from '@/glob';
 import * as sys from '@/sys';
 import { prettier } from '@/mupyjs/main';
 import { pass1 } from '@/mupyjs/pass1';
 import { parse } from '@/mupyjs/parser';
-import { compile } from '@/mupyjs/compiler';
+import { compile_import, compile } from '@/mupyjs/compiler';
 import { pp } from '@/mupyjs/AST';
 import { run_markdown_tests } from '@/mupyjs/main';
 function write_file(name, src) {
@@ -22,8 +23,8 @@ function run_test(test_file) {
   write_file(prefix.__add__('.ast0'), pp(ast));
   ast = pass1(ast);
   write_file(prefix.__add__('.ast1'), pp(ast));
-  var js = compile(ast);
-  write_file(prefix.__add__('.mjs'), js);
+  var js = compile_import(ast);
+  write_file(prefix.__add__('.unformatted.js'), js);
   write_file(prefix.__add__('.js'), prettier(js));
 }
 if ((__name__ ?? Nil).__eq__('__main__')) {
@@ -38,6 +39,7 @@ if ((__name__ ?? Nil).__eq__('__main__')) {
       run_test(test_file);
     } catch (e) {
       if (e instanceof Exception) {
+        print(e);
         print('Error running test ' + test_file + ': ' + e);
       }
     }

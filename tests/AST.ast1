@@ -1,4 +1,4 @@
-(module
+(do
   (import_as "json" json)
   (import_as "re" re)
   (class
@@ -167,4 +167,4 @@
       (set (.__list first rest) (.__call__ _parse_pp str))
       (.append result first)
       (set str rest))
-    (return (.__call__ AST "module" (splat result)))))
+    (return (.__call__ AST "do" (splat result)))))

@@ -1,3 +1,4 @@
+import { print } from './runtime.js';
 import * as json from '@/json';
 import * as re from '@/re';
 class AST {
@@ -130,5 +131,5 @@ function parse_pp(str) {
     result.append(first);
     var str = rest;
   }
-  return new AST('module', ...result);
+  return new AST('do', ...result);
 }

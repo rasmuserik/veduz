@@ -1,5 +1,6 @@
 import libcst as cst
 from mupyjs.AST import AST, pp
+from mupyjs.utils import legal_method_name
 
 cst_binops = {
     "Multiply": "__mul__",
@@ -31,6 +32,8 @@ class ParseError(Exception):
         self.message = message
 
 class Parser:
+    def parse_Assert(self, node):
+        return AST('.__call__', AST("name", "assert"), self(node.test), *([self(node.msg)] if node.msg else []))
     def parse_Assign(self, node):
         assert(len(node.targets) == 1)
         if isinstance(node.targets[0].target, cst.Attribute):
@@ -41,8 +44,25 @@ class Parser:
             return AST("set", self(node.targets[0]), self(node.value))
     def parse_AssignTarget(self, node):
         return self(node.target)
+    def parse_AugAssign(self, node):
+        type = classname(node.operator)
+        aug_ops = {
+            "AddAssign": ".__add__",
+        }
+        assert(type in aug_ops)
+        val = AST(aug_ops[type], self(node.target), self(node.value))
+        if isinstance(node.target, cst.Attribute):
+            assert(isinstance(node.target.attr, cst.Name))
+            return AST(".__setattr__", self(node.target.value), node.target.attr.value, val)
+        if isinstance(node.target, cst.Subscript):
+            assert(len(node.target.slice) == 1)
+            assert(isinstance(node.target.slice[0].slice, cst.Index))
+            return AST(".__setitem__", self(node.target.value), self(node.target.slice[0].slice.value), val)
+        assert(isinstance(node.target, cst.Name))
+        return AST("set", self(node.target), val)
     def parse_Attribute(self, node):
-        return AST(".", self(node.value), self(node.attr))
+        assert(isinstance(node.attr, cst.Name))
+        return AST(".__getattr__", self(node.value), node.attr.value)
     def parse_BinaryOperation(self, node):
         cls = classname(node.operator)
         if cls in cst_binops:
@@ -72,7 +92,10 @@ class Parser:
             else:
                 args.append(self(arg.value))
         if len(kwargs) > 0:
-            args.append(AST("dict", "_kwargs", AST("name", "True"), *kwargs))
+            args.append(AST("kwargs", *kwargs))
+        obj = self(node.func)
+        if obj.type == ".__getattr__" and legal_method_name(obj.children[1]):
+            return AST("." + obj.children[1], obj.children[0], *args)
         return AST(".__call__", self(node.func), *args)
     def parse_ClassDef(self, node):
         assert(isinstance(node.body, cst.IndentedBlock))
@@ -92,10 +115,8 @@ class Parser:
             "Is": "__is",
             "IsNot": "__isnot",
         }
-        print(node)
         if type in comparisons:
             result = AST("." + comparisons[type], self(left), self(right))
-            print(pp(result))
             return result
         if type == "In":
             return AST(".__contains__", self(right), self(left))
@@ -103,8 +124,14 @@ class Parser:
             return AST(".__not__", AST(".__contains__", self(right), self(left)))
         raise Exception("Unknown comparison operator", node)
     def parse_Dict(self, node):
-        assert(len(node.elements) == 0)
-        return AST("dict")
+        result = [".__dict"]
+        for elem in node.elements:
+            if isinstance(elem, cst.DictElement):
+                result.append(self(elem.key))
+                result.append(self(elem.value))
+            elif isinstance(elem, cst.StarredDictElement):
+                result.append(AST("splat", self(elem.value)))
+        return AST(*result)
     def parse_Expr(self, node):
         return self(node.value)
     def parse_For(self, node):
@@ -132,6 +159,19 @@ class Parser:
         if node.params.star_kwarg:
             params.append(AST("kwarg", AST("splat", self(node.params.star_kwarg.name))))
         return AST("fn", self(node.name), *params, *map(self, node.body.body))
+    def parse_GeneratorExp(self, node):
+        result = ["generator", self(node.elt)];
+        for_in = node.for_in
+        while for_in:
+            result.append(AST("iter", self(for_in.target), self(for_in.iter)))
+            for if_ in for_in.ifs:
+                result.append(self(if_.test))
+            for_in = for_in.inner_for_in
+        return AST(*result)
+    def parse_ListComp(self, node):
+        return AST(".__call__", AST("name", "list"), self.parse_GeneratorExp(node))
+    def parse_Global(self, node):
+        return AST("global", *map(self, node.names))
     def parse_If(self, node):
         result = ["if", self(node.test), self(node.body)]
         orelse = node.orelse
@@ -143,6 +183,8 @@ class Parser:
             assert(isinstance(orelse, cst.Else))
             result.append(self(orelse.body))
         return AST(*result)
+    def parse_IfExp(self, node):
+        return AST("ifelse", self(node.test), self(node.body), self(node.orelse))
     def parse_IndentedBlock(self, node):
         return AST("do", *map(self, node.body))
     def parse_Index(self, node):
@@ -181,17 +223,34 @@ class Parser:
             return AST("do", *map(self, node.body))
     def parse_Integer(self, node):
         return AST("num", node.value)
+    def parse_List(self, node):
+        result = [".__list"]
+        for elem in node.elements:
+            if isinstance(elem, cst.Element):
+                result.append(self(elem.value))
+            elif isinstance(elem, cst.StarredElement):
+                result.append(AST("splat", self(elem.value)))
+        return AST(*result)
     def parse_Module(self, node):
-        return AST("module", *map(self, node.body))
+        return AST("do", *map(self, node.body))
     def parse_Name(self, node):
         return AST("name", node.value)
+    def parse_NameItem(self, node):
+        return self(node.name)
     def parse_NoneType(self, node):
         return AST("name", "None")
+    def parse_Nonlocal(self, node):
+        return AST("nonlocal", *map(self, node.names))
     def parse_Pass(self, node):
         return AST("name", "pass")
+    def parse_Raise(self, node):
+        return AST(".__call__", AST("name", "raise"), self(node.exc))
     def parse_Return(self, node):
         return AST("return", self(node.value))
     def parse_SimpleStatementLine(self, node):
+        assert(len(node.body) == 1)
+        return self(node.body[0])
+    def parse_SimpleStatementSuite(self, node):
         assert(len(node.body) == 1)
         return self(node.body[0])
     def parse_SimpleString(self, node):
@@ -203,7 +262,6 @@ class Parser:
         assert(isinstance(node.slice[0], cst.SubscriptElement))
         return AST(".__getitem__", self(node.value), self(node.slice[0].slice))
     def parse_Try(self, node):
-        print(node)
         body = self(node.body)
         excepts = []
         name = None
@@ -228,7 +286,14 @@ class Parser:
             result.append(AST("except", self(e.type), AST("name", name), *body))
         if node.finalbody:
             result.append(AST("finally", self(node.finalbody.body)))
-        print(result)
+        return AST(*result)
+    def parse_Tuple(self, node):
+        result = [".__tuple"]
+        for elem in node.elements:
+            if isinstance(elem, cst.Element):
+                result.append(self(elem.value))
+            elif isinstance(elem, cst.StarredElement):
+                result.append(AST("splat", self(elem.value)))
         return AST(*result)
     def parse_UnaryOperation(self, node):
         if isinstance(node.operator, cst.Minus):
@@ -241,6 +306,9 @@ class Parser:
             return AST(".__not__", self(node.expression))
         else:
             raise Exception("Unknown unary operator", node)
+    def parse_While(self, node):
+        assert(isinstance(node.body, cst.IndentedBlock))
+        return AST("while", self(node.test), *map(self, node.body.body))
     def __call__(self, node):
         node_type = classname(node)
         handler = getattr(self, "parse_" + node_type, None)

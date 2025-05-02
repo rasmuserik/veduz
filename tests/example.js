@@ -1,3 +1,4 @@
+import { print } from './runtime.js';
 class AST {
   constructor(type, ...children) {
     const self = this;
@@ -11,3 +12,10 @@ class AST {
     }
   }
 }
+function fib(n) {
+  if (n.__le__(1)) {
+    return n;
+  }
+  return fib(n.__sub__(1)).__add__(fib(n.__sub__(2)));
+}
+print(fib(32));

@@ -33,7 +33,6 @@ class Pass_1:
             self.scope[name.children[0]] = {"vartype": "nonlocal"}
         return AST(ast.type, ast.meta, *map(self, ast.children))
     def handle_set(self, ast):
-        print(pp(ast), self.scope)
         if ast.children[0].type == "name":
             name = ast.children[0].children[0]
             if not name in self.scope:

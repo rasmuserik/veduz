@@ -1,4 +1,4 @@
-(module
+(do
   (import_from "mupyjs/AST" AST pp)
   (class
     Pass1Error
@@ -107,7 +107,6 @@
       handle_set
       (arg self)
       (arg ast)
-      (.__call__ print (.__call__ pp ast) (.__getattr__ self "scope"))
       (if
         (.__eq__
           (.__getattr__ (.__getitem__ (.__getattr__ ast "children") 0) "type")

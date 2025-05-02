@@ -1,4 +1,4 @@
-(module
+(do
   (import_as "sys" sys)
   (import_as "requests" requests)
   (import_as "subprocess" subprocess)
@@ -8,10 +8,7 @@
     (arg code)
     (set
       response
-      (.post
-        requests
-        "http://localhost:9696/format"
-        (dict "_kwargs" True "data" code)))
+      (.post requests "http://localhost:9696/format" (kwargs "data" code)))
     (return (.__getattr__ response "text")))
   (set popen (.__getattr__ subprocess "Popen"))
   (set

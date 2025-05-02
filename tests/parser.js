@@ -1,5 +1,7 @@
+import { print } from './runtime.js';
 import * as cst from '@/libcst';
 import { AST, pp } from '@/mupyjs/AST';
+import { legal_method_name } from '@/mupyjs/utils';
 var cst_binops = __dict(
   'Multiply',
   '__mul__',
@@ -50,6 +52,15 @@ class ParseError {
   }
 }
 class Parser {
+  parse_Assert(node) {
+    const self = this;
+    return new AST(
+      '.__call__',
+      new AST('name', 'assert'),
+      self(node.test),
+      ...(node.msg ? [self(node.msg)] : [])
+    );
+  }
   parse_Assign(node) {
     const self = this;
     assert((len(node.targets) ?? Nil).__eq__(1));
@@ -74,9 +85,42 @@ class Parser {
     const self = this;
     return self(node.target);
   }
+  parse_AugAssign(node) {
+    const self = this;
+    var type = classname(node.operator);
+    var aug_ops = __dict('AddAssign', '.__add__');
+    assert(aug_ops.__contains__(type));
+    var val = new AST(
+      aug_ops.__getitem__(type),
+      self(node.target),
+      self(node.value)
+    );
+    if (isinstance(node.target, cst.Attribute)) {
+      assert(isinstance(node.target.attr, cst.Name));
+      return new AST(
+        '.__setattr__',
+        self(node.target.value),
+        node.target.attr.value,
+        val
+      );
+    }
+    if (isinstance(node.target, cst.Subscript)) {
+      assert((len(node.target.slice) ?? Nil).__eq__(1));
+      assert(isinstance(node.target.slice.__getitem__(0).slice, cst.Index));
+      return new AST(
+        '.__setitem__',
+        self(node.target.value),
+        self(node.target.slice.__getitem__(0).slice.value),
+        val
+      );
+    }
+    assert(isinstance(node.target, cst.Name));
+    return new AST('set', self(node.target), val);
+  }
   parse_Attribute(node) {
     const self = this;
-    return new AST('.', self(node.value), self(node.attr));
+    assert(isinstance(node.attr, cst.Name));
+    return new AST('.__getattr__', self(node.value), node.attr.value);
   }
   parse_BinaryOperation(node) {
     const self = this;
@@ -120,8 +164,17 @@ class Parser {
       }
     }
     if (len(kwargs).__gt__(0)) {
-      args.append(
-        new AST('dict', '_kwargs', new AST('name', 'True'), ...kwargs)
+      args.append(new AST('kwargs', ...kwargs));
+    }
+    var obj = self(node.func);
+    if (
+      (obj.type ?? Nil).__eq__('.__getattr__') &&
+      legal_method_name(obj.children.__getitem__(1))
+    ) {
+      return new AST(
+        '.'.__add__(obj.children.__getitem__(1)),
+        obj.children.__getitem__(0),
+        ...args
       );
     }
     return new AST('.__call__', self(node.func), ...args);
@@ -155,14 +208,12 @@ class Parser {
       'IsNot',
       '__isnot'
     );
-    print(node);
     if (comparisons.__contains__(type)) {
       var result = new AST(
         '.'.__add__(comparisons.__getitem__(type)),
         self(left),
         self(right)
       );
-      print(pp(result));
       return result;
     }
     if ((type ?? Nil).__eq__('In')) {
@@ -178,8 +229,16 @@ class Parser {
   }
   parse_Dict(node) {
     const self = this;
-    assert((len(node.elements) ?? Nil).__eq__(0));
-    return new AST('dict');
+    var result = ['.__dict'];
+    for (var elem of node.elements) {
+      if (isinstance(elem, cst.DictElement)) {
+        result.append(self(elem.key));
+        result.append(self(elem.value));
+      } else if (isinstance(elem, cst.StarredDictElement)) {
+        result.append(new AST('splat', self(elem.value)));
+      }
+    }
+    return new AST(...result);
   }
   parse_Expr(node) {
     const self = this;
@@ -253,6 +312,31 @@ class Parser {
       ...map(self, node.body.body)
     );
   }
+  parse_GeneratorExp(node) {
+    const self = this;
+    var result = ['generator', self(node.elt)];
+    var for_in = node.for_in;
+    while (for_in) {
+      result.append(new AST('iter', self(for_in.target), self(for_in.iter)));
+      for (var if_ of for_in.ifs) {
+        result.append(self(if_.test));
+      }
+      for_in = for_in.inner_for_in;
+    }
+    return new AST(...result);
+  }
+  parse_ListComp(node) {
+    const self = this;
+    return new AST(
+      '.__call__',
+      new AST('name', 'list'),
+      self.parse_GeneratorExp(node)
+    );
+  }
+  parse_Global(node) {
+    const self = this;
+    return new AST('global', ...map(self, node.names));
+  }
   parse_If(node) {
     const self = this;
     var result = ['if', self(node.test), self(node.body)];
@@ -267,6 +351,15 @@ class Parser {
       result.append(self(orelse.body));
     }
     return new AST(...result);
+  }
+  parse_IfExp(node) {
+    const self = this;
+    return new AST(
+      'ifelse',
+      self(node.test),
+      self(node.body),
+      self(node.orelse)
+    );
   }
   parse_IndentedBlock(node) {
     const self = this;
@@ -326,27 +419,56 @@ class Parser {
     const self = this;
     return new AST('num', node.value);
   }
+  parse_List(node) {
+    const self = this;
+    var result = ['.__list'];
+    for (var elem of node.elements) {
+      if (isinstance(elem, cst.Element)) {
+        result.append(self(elem.value));
+      } else if (isinstance(elem, cst.StarredElement)) {
+        result.append(new AST('splat', self(elem.value)));
+      }
+    }
+    return new AST(...result);
+  }
   parse_Module(node) {
     const self = this;
-    return new AST('module', ...map(self, node.body));
+    return new AST('do', ...map(self, node.body));
   }
   parse_Name(node) {
     const self = this;
     return new AST('name', node.value);
   }
+  parse_NameItem(node) {
+    const self = this;
+    return self(node.name);
+  }
   parse_NoneType(node) {
     const self = this;
     return new AST('name', 'None');
   }
+  parse_Nonlocal(node) {
+    const self = this;
+    return new AST('nonlocal', ...map(self, node.names));
+  }
   parse_Pass(node) {
     const self = this;
     return new AST('name', 'pass');
+  }
+  parse_Raise(node) {
+    const self = this;
+    return new AST('.__call__', new AST('name', 'raise'), self(node.exc));
   }
   parse_Return(node) {
     const self = this;
     return new AST('return', self(node.value));
   }
   parse_SimpleStatementLine(node) {
+    const self = this;
+    assert((len(node.body) ?? Nil).__eq__(1));
+    return self(node.body.__getitem__(0));
+  }
+  parse_SimpleStatementSuite(node) {
     const self = this;
     assert((len(node.body) ?? Nil).__eq__(1));
     return self(node.body.__getitem__(0));
@@ -377,7 +499,6 @@ class Parser {
   }
   parse_Try(node) {
     const self = this;
-    print(node);
     var body = self(node.body);
     var excepts = [];
     var name = undefined;
@@ -404,7 +525,18 @@ class Parser {
     if (node.finalbody) {
       result.append(new AST('finally', self(node.finalbody.body)));
     }
-    print(result);
+    return new AST(...result);
+  }
+  parse_Tuple(node) {
+    const self = this;
+    var result = ['.__tuple'];
+    for (var elem of node.elements) {
+      if (isinstance(elem, cst.Element)) {
+        result.append(self(elem.value));
+      } else if (isinstance(elem, cst.StarredElement)) {
+        result.append(new AST('splat', self(elem.value)));
+      }
+    }
     return new AST(...result);
   }
   parse_UnaryOperation(node) {
@@ -420,6 +552,11 @@ class Parser {
     } else {
       raise(new Exception('Unknown unary operator', node));
     }
+  }
+  parse_While(node) {
+    const self = this;
+    assert(isinstance(node.body, cst.IndentedBlock));
+    return new AST('while', self(node.test), ...map(self, node.body.body));
   }
   __call__(node) {
     const self = this;

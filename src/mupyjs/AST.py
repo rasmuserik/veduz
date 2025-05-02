@@ -77,4 +77,4 @@ def parse_pp(str):
         [first, rest] = _parse_pp(str)
         result.append(first)
         str = rest
-    return AST("module", *result)
+    return AST("do", *result)

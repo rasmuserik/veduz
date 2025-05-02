@@ -3,7 +3,7 @@ import sys
 from mupyjs.main import prettier
 from mupyjs.pass1 import pass1
 from mupyjs.parser import parse
-from mupyjs.compiler import compile
+from mupyjs.compiler import compile_import, compile
 from mupyjs.AST import pp
 from mupyjs.main import run_markdown_tests
 
@@ -22,7 +22,7 @@ def run_test(test_file):
     write_file(prefix + '.ast0', pp(ast))
     ast = pass1(ast)
     write_file(prefix + '.ast1', pp(ast))
-    js = compile(ast)
+    js = compile_import(ast)
     write_file(prefix + '.unformatted.js', js)
     write_file(prefix + '.js', prettier(js))
 

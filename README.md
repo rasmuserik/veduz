@@ -1,30 +1,24 @@
 
-# muPyJS <img src="mupyjs.webp" width=64 height=64 /> 
-
-Minimal Python subset that translate to modern JavaScript
-
-Motivation/design choices
-
-
-Vision:
-
-- transpilation py to js
-	- µPython to AST
-	- AST to JS
-- code transformations
-	- AST to µPY
-	- partial evaluation
-- two-way, also to/from JS+types (µTS)
-
+# mupyjs   <img src="mupyjs.webp" width=64 height=64 /> 
+µPyJS is a Minimal Python subset that translate to modern JavaScript
+- Mypyjs code must be valid Python code.
+- Only a small subset of Python, that can run efficiently on JS-engines, are implemented. Full Python compatibility is a non-goal.
+- AST should be as simple as possible, and relatively flat, – to be easy to work with, both programmatically and as an s-expression
 # Milestones
 - [x] 0.0.1 Compile + compare examples from spec
-- [ ] 0.0.2 Compile snapshot of itself
-- [ ] 0.0.3 Run partial snapshot of itself
+- [x] 0.0.2 Compile snapshot of itself 
+- [ ] 0.0.3 Start create runtime, and have some running code!
+- [ ] 0.0.4 Add runtime to compile itself (from pre-parsed AST)
+### Someday maybe features
+- Type inference + type-directed performance optimizations
+- Transform AST back to python (for easy metaprogramming, partial-evaluation, etc)
+# Abstract Syntax Tree
+### arg
+### and
+### class
+### dict
+only used for kwargs: todo remove
 
-# Design goal
-- Mypyjs programs must be valid Python program.
-- Only a small subset of python, that can run efficientlyt on JS-engines, are implemented. Full python compatibility is a non-goal.
-- AST should be as simple as possible, – everything that behaves like method-calls should be method-calls, everything that could be variables should be variables etc.
 # Specification
 ## Display/generator
 
@@ -554,7 +548,7 @@ foo(123, c="hello")
 ```
 
 ```AST
-(.__call__ foo 123 (dict "_kwargs" True "c" "hello"))
+(.__call__ foo 123 (kwargs "c" "hello"))
 ```
 
 ```js
@@ -623,8 +617,8 @@ baz("foo", bar=123)
 
 ```AST
 (.__call__ foo blah (splat args))
-(.__call__ bar (dict "_kwargs" True (splat kwargs)))
-(.__call__ baz "foo" (dict "_kwargs" True "bar" 123))
+(.__call__ bar (kwargs (splat kwargs)))
+(.__call__ baz "foo" (kwargs "bar" 123))
 ```
 
 ```js
