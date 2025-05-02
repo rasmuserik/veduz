@@ -26,6 +26,142 @@ Vision:
 - Only a small subset of python, that can run efficientlyt on JS-engines, are implemented. Full python compatibility is a non-goal.
 - AST should be as simple as possible, – everything that behaves like method-calls should be method-calls, everything that could be variables should be variables etc.
 # Specification
+## If-else
+
+```python
+if a:
+  b 
+  c
+
+if e:
+  f
+elif g:
+  h
+  i
+else:
+  j
+```
+
+```AST
+(if a (do b c))
+(if e f g (do h i) j)
+```
+
+```js
+if(a) { b ; c }
+if(e) { f } else if(g) { h; i} else {j}
+```
+
+## Formatted strings
+
+```python
+f""
+f"foo{bar}{baz}"
+f'{123}blah'
+f"""{hello}"""
+```
+
+```AST
+(.__fstr "")
+(.__fstr "foo" bar baz)
+(.__fstr "" 123 "blah")
+(.__fstr "" hello)
+```
+
+```js
+""
+"foo" + bar + baz;
+"" + 123 + "blah";
+"" + hello;
+```
+
+## Exceptions
+
+The name for the caught exception must be the same
+
+```python
+try:
+	pass
+except E:
+	1
+	2
+try:
+	3
+	4
+except E:
+	5	
+except E2 as e:
+	6	
+finally:
+	7	
+
+```
+
+```AST
+(try pass
+	(except E __exception 1 2))
+(try (do 3 4)
+    (except E e 5)
+    (except E2 e 6)
+	(finally 7))
+
+```
+
+```js
+try { } 
+catch (__exception) {
+  if (__exception instanceof E) { 1; 2; }
+}
+try { 3; 4 } 
+catch (e) {
+  if (e instanceof E) { 5 } 
+  else if (e instanceof E2) { 6 }
+} finally { 7 }
+```
+## Built-in names
+
+```python
+None
+True
+False
+Nil
+pass
+```
+
+```AST
+None
+True
+False
+Nil
+pass
+```
+
+```js
+undefined
+true
+false
+Nil
+```
+
+- `Nil` is an object for methodcalls on Null/undefined, ie `(might_be_null ?? Nil).__eq__(a)`
+
+## Method calls
+
+```python
+foo.bar(baz)
+a.b.c()
+```
+
+```AST
+(.bar foo baz)
+(.c (.__getattr__ a "b"))
+```
+
+```js
+foo.bar(baz)
+a.b.c()
+```
+
 
 ## Unary operators
 
@@ -133,10 +269,10 @@ a not in b
 ```js
 a.__lt__(b);
 a.__gt__(b);
-(a ?? Null).__eq__(b);
+(a ?? Nil).__eq__(b);
 a.__ge__(b);
 a.__le__(b);
-(a ?? Null).__ne__(b);
+(a ?? Nil).__ne__(b);
 a === b;
 a !== b;
 b.__contains__(a);

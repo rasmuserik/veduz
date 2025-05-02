@@ -22,15 +22,16 @@ def run_test(test_file):
     write_file(prefix + '.ast0', pp(ast))
     ast = pass1(ast)
     write_file(prefix + '.ast1', pp(ast))
-    js = prettier(compile(ast))
-    write_file(prefix + '.js', js)
+    js = compile(ast)
+    write_file(prefix + '.mjs', js)
+    write_file(prefix + '.js', prettier(js))
 
 if __name__ == "__main__":
     run_markdown_tests("README.md")
     test_files = glob.glob('./tests/**/*.py', recursive=True)
-    rest_files = reversed(test_files)
+    #test_files = reversed(test_files)
     print(test_files)
-    for test_file in rest_files:
+    for test_file in test_files:
         try:
             run_test(test_file)
         except Exception as e:

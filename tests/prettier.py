@@ -7,7 +7,8 @@ def prettier(code):
     response = requests.post('http://localhost:9696/format', data=code)
     return response.text
 
-prettier_process = subprocess.Popen(['node', 'src/mupyjs/prettier_server.js'])
+popen = subprocess.Popen
+prettier_process = popen(['node', 'src/mupyjs/prettier_server.js'])
 
 def cleanup_prettier_process():
     global prettier_process

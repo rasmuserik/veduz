@@ -1,7 +1,5 @@
-from mupyjs.AST import AST, pp
 import json
-def classname(obj):
-    return obj.__class__.__name__
+from mupyjs.AST import AST, pp
 
 class CompileError(Exception):
     def __init__(self, message):
@@ -11,6 +9,7 @@ name_map = {
     "True": "true",
     "False": "false",
     "None": "undefined",
+    "pass": "",
 }
 
 class Compiler:
@@ -41,7 +40,7 @@ class Compiler:
                 i += 1;
         return "{" + ", ".join(children) + "}"
     def compile_do(self, ast):
-        return ";".join(map(self, ast.children[1:]))
+        return ";".join(map(self, ast.children))
     def compile_fn(self, ast):
         compiling_class = self.compiling_class
         self.compiling_class = False
@@ -72,6 +71,12 @@ class Compiler:
         result += "}"
         self.compiling_class = compiling_class
         return result;
+    def compile_for(self, ast):
+        iter = ast.children[0]
+        vartype = ""
+        if "vartype" in iter.meta:
+            vartype = iter.meta["vartype"] + " "
+        return "for(" + vartype + " " + self(iter.children[0])+ " of " + self(iter.children[1]) + "){" + self(ast.children[1]) + "}"
     def compile_if(self, ast):
         result = "if(" + self(ast.children[0]) + "){" + self(ast.children[1]) + "}"
         i = 2
@@ -81,27 +86,71 @@ class Compiler:
         if(i < len(ast.children)):
             result += "else{" + self(ast.children[i]) + "}"
         return result
+    def compile_import_as(self, ast):
+        return "import * as " + self(ast.children[1]) + ' from "@/' + ast.children[0] + '"'
+    def compile_import_from(self, ast):
+        return "import {" + ", ".join(self(child) for child in ast.children[1:]) + '} from "@/' + ast.children[0] + '"'
     def compile_method_call(self, ast):
         method = ast.type[1:]
-        return self(ast.children[0]) + "." + method + "(" + ", ".join(self(child) for child in ast.children[1:]) + ")"
+        return "(" + self(ast.children[0]) + ")." + method + "(" + ", ".join(self(child) for child in ast.children[1:]) + ")"
     def compile_module(self, ast):
-        return "\n".join(self(child) for child in ast.children)
+        return ";\n".join(self(child) for child in ast.children)
     def compile_name(self, ast):
         assert(len(ast.children) == 1)
-        if(name_map.get(ast.children[0])):
+        if ast.children[0] in name_map:
             return name_map[ast.children[0]]
         return ast.children[0]
     def compile_num(self, ast):
         assert(len(ast.children) == 1)
         return str(ast.children[0])
+    def compile_set(self, ast):
+        vartype = ""
+        if "vartype" in ast.meta:
+            vartype = ast.meta["vartype"] + " "
+        return vartype + self(ast.children[0]) + " = " + self(ast.children[1])
     def compile_splat(self, ast):
         assert(len(ast.children) == 1)
         return "..." + self(ast.children[0])
+    def compile_try(self, ast):
+        body = []
+        excepts = []
+        finallyBody = []
+        for child in ast.children:
+            if child.type == "except":
+                excepts.append(child)
+            elif child.type == "finally":
+                finallyBody = child
+            else:
+                body.append(child)
+        result = "try{" + ";".join(map(self, body)) + "}"
+        if len(excepts) > 0:
+            name = self(excepts[0].children[1])
+            result += "catch(" + name + "){"
+            for e in excepts:
+                result += "if(" + name + " instanceof " + self(e.children[0]) + "){"
+                result += ";".join(map(self, e.children[2:]))
+                result += "} else "
+            result = result[:-6] + "}"
+        if finallyBody:
+            result += "finally{" + ";".join(map(self, finallyBody.children)) + "}"
+        return result
+
+
+    def method___eq__(self, ast):
+        return "(" + self(ast.children[0]) + "??Nil).__eq__(" + self(ast.children[1]) + ")"
+    def method___ne__(self, ast):
+        return "(" + self(ast.children[0]) + "??Nil).__ne__(" + self(ast.children[1]) + ")"
+    def method___is(self, ast):
+        return "(" + self(ast.children[0]) + ") === (" + self(ast.children[1]) + ")"
+    def method___fstr(self, ast):
+        return "+".join([self(child) for child in ast.children])
+    def method___isnot(self, ast):
+        return "(" + self(ast.children[0]) + ") !== (" + self(ast.children[1]) + ")"
     def method___call__(self, ast):
-        prefix = ""
+        prefix = "("
         if(ast.children[0].type == "name" and ast.children[0].children[0][0].isupper()):
-            prefix = "new "
-        return prefix + self(ast.children[0]) + "(" + ", ".join(self(child) for child in ast.children[1:]) + ")"
+            prefix = "new ("
+        return prefix + self(ast.children[0]) + ")(" + ", ".join(self(child) for child in ast.children[1:]) + ")"
     def __call__(self, ast):
         if(isinstance(ast, str)):
             return json.dumps(ast)

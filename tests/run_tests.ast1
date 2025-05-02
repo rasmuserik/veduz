@@ -1,0 +1,48 @@
+(module
+  (import_as "glob" glob)
+  (import_as "sys" sys)
+  (import_from "mupyjs/main" prettier)
+  (import_from "mupyjs/pass1" pass1)
+  (import_from "mupyjs/parser" parse)
+  (import_from "mupyjs/compiler" compile)
+  (import_from "mupyjs/AST" pp)
+  (import_from "mupyjs/main" run_markdown_tests)
+  (fn
+    write_file
+    (arg name)
+    (arg src)
+    (set file (.__call__ open name "w"))
+    (.write file src)
+    (.close file))
+  (fn
+    run_test
+    (arg test_file)
+    (set file (.__call__ open test_file "r"))
+    (set src (.read file))
+    (.close file)
+    (set
+      prefix
+      (.__getitem__ test_file (.__call__ slice None (.__neg__ 3) None)))
+    (set ast (.__call__ parse src))
+    (.__call__ write_file (.__add__ prefix ".ast0") (.__call__ pp ast))
+    (set ast (.__call__ pass1 ast))
+    (.__call__ write_file (.__add__ prefix ".ast1") (.__call__ pp ast))
+    (set js (.__call__ compile ast))
+    (.__call__ write_file (.__add__ prefix ".mjs") js)
+    (.__call__ write_file (.__add__ prefix ".js") (.__call__ prettier js)))
+  (if
+    (.__eq__ __name__ "__main__")
+    (do
+      (.__call__ run_markdown_tests "README.md")
+      (set
+        test_files
+        (.glob glob "./tests/**/*.py" (dict "_kwargs" True "recursive" True)))
+      (.__call__ print test_files)
+      (for
+        (iter test_file test_files)
+        (try
+          (.__call__ run_test test_file)
+          (except
+            Exception
+            e
+            (.__call__ print (.__fstr "Error running test " test_file ": " e))))))))

@@ -1,5 +1,6 @@
 import json
 from mupyjs.AST import AST, pp
+from mupyjs.utils import legal_method_name
 
 class CompileError(Exception):
     def __init__(self, message):
@@ -9,6 +10,7 @@ name_map = {
     "True": "true",
     "False": "false",
     "None": "undefined",
+    "pass": "",
 }
 
 class Compiler:
@@ -39,7 +41,7 @@ class Compiler:
                 i += 1;
         return "{" + ", ".join(children) + "}"
     def compile_do(self, ast):
-        return ";".join(map(self, ast.children[1:]))
+        return ";".join(map(self, ast.children))
     def compile_fn(self, ast):
         compiling_class = self.compiling_class
         self.compiling_class = False
@@ -96,14 +98,13 @@ class Compiler:
         return ";\n".join(self(child) for child in ast.children)
     def compile_name(self, ast):
         assert(len(ast.children) == 1)
-        if(name_map.get(ast.children[0])):
+        if ast.children[0] in name_map:
             return name_map[ast.children[0]]
         return ast.children[0]
     def compile_num(self, ast):
         assert(len(ast.children) == 1)
         return str(ast.children[0])
     def compile_set(self, ast):
-        print("HERE", pp(ast), ast.meta)
         vartype = ""
         if "vartype" in ast.meta:
             vartype = ast.meta["vartype"] + " "
@@ -111,12 +112,39 @@ class Compiler:
     def compile_splat(self, ast):
         assert(len(ast.children) == 1)
         return "..." + self(ast.children[0])
+    def compile_try(self, ast):
+        body = []
+        excepts = []
+        finallyBody = []
+        for child in ast.children:
+            if child.type == "except":
+                excepts.append(child)
+            elif child.type == "finally":
+                finallyBody = child
+            else:
+                body.append(child)
+        result = "try{" + ";".join(map(self, body)) + "}"
+        if len(excepts) > 0:
+            name = self(excepts[0].children[1])
+            result += "catch(" + name + "){"
+            for e in excepts:
+                result += "if(" + name + " instanceof " + self(e.children[0]) + "){"
+                result += ";".join(map(self, e.children[2:]))
+                result += "} else "
+            result = result[:-6] + "}"
+        if finallyBody:
+            result += "finally{" + ";".join(map(self, finallyBody.children)) + "}"
+        return result
+
+
     def method___eq__(self, ast):
-        return "(" + self(ast.children[0]) + "??Null).__eq__(" + self(ast.children[1]) + ")"
+        return "(" + self(ast.children[0]) + "??Nil).__eq__(" + self(ast.children[1]) + ")"
     def method___ne__(self, ast):
-        return "(" + self(ast.children[0]) + "??Null).__ne__(" + self(ast.children[1]) + ")"
+        return "(" + self(ast.children[0]) + "??Nil).__ne__(" + self(ast.children[1]) + ")"
     def method___is(self, ast):
         return "(" + self(ast.children[0]) + ") === (" + self(ast.children[1]) + ")"
+    def method___fstr(self, ast):
+        return "+".join([self(child) for child in ast.children])
     def method___isnot(self, ast):
         return "(" + self(ast.children[0]) + ") !== (" + self(ast.children[1]) + ")"
     def method___call__(self, ast):
@@ -124,6 +152,11 @@ class Compiler:
         if(ast.children[0].type == "name" and ast.children[0].children[0][0].isupper()):
             prefix = "new ("
         return prefix + self(ast.children[0]) + ")(" + ", ".join(self(child) for child in ast.children[1:]) + ")"
+    def method___getattr__(self, ast):
+        if legal_method_name(ast.children[1]):
+            return "(" + self(ast.children[0]) + ")." + ast.children[1]
+        else:
+            return self.compile_method_call(ast)
     def __call__(self, ast):
         if(isinstance(ast, str)):
             return json.dumps(ast)

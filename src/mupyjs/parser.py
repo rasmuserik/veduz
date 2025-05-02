@@ -1,5 +1,6 @@
 import libcst as cst
 from mupyjs.AST import AST, pp
+from mupyjs.utils import legal_method_name
 
 cst_binops = {
     "Multiply": "__mul__",
@@ -42,7 +43,8 @@ class Parser:
     def parse_AssignTarget(self, node):
         return self(node.target)
     def parse_Attribute(self, node):
-        return AST(".", self(node.value), self(node.attr))
+        assert(isinstance(node.attr, cst.Name))
+        return AST(".__getattr__", self(node.value), node.attr.value)
     def parse_BinaryOperation(self, node):
         cls = classname(node.operator)
         if cls in cst_binops:
@@ -73,6 +75,9 @@ class Parser:
                 args.append(self(arg.value))
         if len(kwargs) > 0:
             args.append(AST("dict", "_kwargs", AST("name", "True"), *kwargs))
+        obj = self(node.func)
+        if obj.type == ".__getattr__" and legal_method_name(obj.children[1]):
+            return AST("." + obj.children[1], obj.children[0], *args)
         return AST(".__call__", self(node.func), *args)
     def parse_ClassDef(self, node):
         assert(isinstance(node.body, cst.IndentedBlock))
@@ -92,10 +97,8 @@ class Parser:
             "Is": "__is",
             "IsNot": "__isnot",
         }
-        print(node)
         if type in comparisons:
             result = AST("." + comparisons[type], self(left), self(right))
-            print(pp(result))
             return result
         if type == "In":
             return AST(".__contains__", self(right), self(left))
@@ -109,6 +112,14 @@ class Parser:
         return self(node.value)
     def parse_For(self, node):
         return AST("for", AST("iter", self(node.target), self(node.iter)), *map(self, node.body.body))
+    def parse_FormattedString(self, node):
+        result = [] if len(node.parts) > 0 and isinstance(node.parts[0], cst.FormattedStringText) else [""]
+        for part in node.parts:
+            if isinstance(part, cst.FormattedStringText):
+                result.append(part.value)
+            elif isinstance(part, cst.FormattedStringExpression):
+                result.append(self(part.expression))
+        return AST(".__fstr", *result)
     def parse_FunctionDef(self, node):
         assert(isinstance(node.params, cst.Parameters))
         assert(isinstance(node.body, cst.IndentedBlock))
@@ -125,14 +136,16 @@ class Parser:
             params.append(AST("kwarg", AST("splat", self(node.params.star_kwarg.name))))
         return AST("fn", self(node.name), *params, *map(self, node.body.body))
     def parse_If(self, node):
-        args = ["if", self(node.test), self(node.body)]
-        if classname(node.orelse) == "Else":
-            args.append(self(node.orelse.body))
-        else:
-            print(node.orelse)
-            print(classname(node.orelse))
-            raise Exception("Error unhandled else")
-        return AST(*args)
+        result = ["if", self(node.test), self(node.body)]
+        orelse = node.orelse
+        while isinstance(orelse, cst.If):
+            result.append(self(orelse.test))
+            result.append(self(orelse.body))
+            orelse = orelse.orelse
+        if orelse:
+            assert(isinstance(orelse, cst.Else))
+            result.append(self(orelse.body))
+        return AST(*result)
     def parse_IndentedBlock(self, node):
         return AST("do", *map(self, node.body))
     def parse_Index(self, node):
@@ -164,6 +177,11 @@ class Parser:
             assert(not name.asname)
             vars.append(self(name.name))
         return AST("import_from", module, *vars)
+    def parse_IndentedBlock(self, node):
+        if len(node.body) == 1:
+            return self(node.body[0])
+        else:
+            return AST("do", *map(self, node.body))
     def parse_Integer(self, node):
         return AST("num", node.value)
     def parse_Module(self, node):
@@ -187,6 +205,32 @@ class Parser:
         assert(len(node.slice) == 1)
         assert(isinstance(node.slice[0], cst.SubscriptElement))
         return AST(".__getitem__", self(node.value), self(node.slice[0].slice))
+    def parse_Try(self, node):
+        body = self(node.body)
+        excepts = []
+        name = None
+        for handler in node.handlers:
+            if isinstance(handler, cst.ExceptHandler):
+                excepts.append(handler)
+                if handler.name:
+                    assert(isinstance(handler.name, cst.AsName))
+                    if name:
+                        assert(name == handler.name.name)
+                    else:
+                        name = handler.name.name.value
+        if name is None:
+            name = "__exception"
+        result = ["try", body]
+        for e in excepts:
+            body = self(e.body)
+            if body.type == "do":
+                body = body.children
+            else:
+                body = [body]
+            result.append(AST("except", self(e.type), AST("name", name), *body))
+        if node.finalbody:
+            result.append(AST("finally", self(node.finalbody.body)))
+        return AST(*result)
     def parse_UnaryOperation(self, node):
         if isinstance(node.operator, cst.Minus):
             return AST(".__neg__", self(node.expression))
