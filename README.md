@@ -7,87 +7,54 @@
 # Milestones
 - [x] 0.0.1 Compile + compare examples from spec
 - [x] 0.0.2 Compile snapshot of itself 
-- [ ] 0.0.3 Start create runtime, and have some running code!
+- [ ] 0.0.3 Start create runtime, and have some running code + update language doc
 - [ ] 0.0.4 Add runtime to compile itself (from pre-parsed AST)
 ### Someday maybe features
 - Type inference + type-directed performance optimizations
 - Transform AST back to python (for easy metaprogramming, partial-evaluation, etc)
-# Abstract Syntax Tree
-### arg
-### and
-### class
-### dict
-only used for kwargs: todo remove
+# Language Documentation
+The language is designed around having a simple abstract syntax tree, with mapping from python and to js.
 
-# Specification
-## Display/generator
+Each node in the syntax tree has a type and a list of children, which are either AST-nodes or strings. 
+
+The following text will go through the different type of AST-nodes, and their corresponding Python and JavaScript. This document is also an executable test, that checks that the Python code actually compiles to the AST and JavaScript.
+
+The AST can be prettyprinted similar to an S-expression, such that 
+
+```
+{type: "some_type", 
+ children: [
+   {type: "another_node", children: []}, 
+   {type: "num", children: ["123"]}, 
+   {type: "name", children:["a_name"]} 
+   "a string"]
+```
+
+ can be written as `(some_type (another_node) 123 a_name "a string")`.
+
+There are two kinds of types in the ast.
+- *method calls*: types starting with `.` are method calls, so `(.__add__ a b)` is calling the `__add__` method on `a`
+- *builtin types*: everything else
+
+## Values
+String and number literals in Python, AST and JavaScript:
 
 ```python
-(x for x in range(2))
-(x for x in range(12) if x.even())
-[x+y for x in range(5) for y in range(5)]
+"foo"
+123
 ```
 
 ```AST
-(generator x 
-    (iter x (.__call__ range 2)))
-(generator x 
-    (iter x (.__call__ range 12))
-    (.even x))
-(.__call__ list
-    (generator (.__add__ x y)
-        (iter x (.__call__ range 5))
-        (iter y (.__call__ range 5))))
-```
-
-
-```js
-(function* () {
-  for (const x of range(2)) yield x;
-})();
-(function*() {
-  for(const x of range(12))
-    if(x.even())
-      yield x
-})()
-list((function*() {
-  for(const x of range(5))
-    for(const y of range(5))
-      yield x.__add__(y)
-})())
-```
-
-## If-else
-
-
-```python
-if a: 1
-if a:
-  b 
-  c
-
-if e:
-  f
-elif g:
-  h
-  i
-else:
-  j
-```
-
-```AST
-(if a 1)
-(if a (do b c))
-(if e f g (do h i) j)
+"foo"
+123
 ```
 
 ```js
-if(a) { 1 }
-if(a) { b ; c }
-if(e) { f } else if(g) { h; i} else {j}
+"foo"
+123
 ```
 
-## Formatted strings
+Formatted strings has the special `.__fstr` method in the AST
 
 ```python
 f""
@@ -110,186 +77,14 @@ f"""{hello}"""
 "" + hello;
 ```
 
-## Exceptions
-
-The name for the caught exception must be the same
-
-```python
-try:
-	pass
-except E:
-	1
-	2
-try:
-	3
-	4
-except E:
-	5	
-except E2 as e:
-	6	
-finally:
-	7	
-
-```
-
-```AST
-(try pass
-	(except E __exception 1 2))
-(try (do 3 4)
-    (except E e 5)
-    (except E2 e 6)
-	(finally 7))
-
-```
-
-```js
-try { } 
-catch (__exception) {
-  if (__exception instanceof E) { 1; 2; }
-}
-try { 3; 4 } 
-catch (e) {
-  if (e instanceof E) { 5 } 
-  else if (e instanceof E2) { 6 }
-} finally { 7 }
-```
-
-
-
-## Augmented assignment
-
-```python
-a += 1
-foo.bar += 1
-foo["bar"] += 1
-```
-
-```AST
-(set a (.__add__ a 1))
-(.__setattr__ foo "bar" (.__add__ (.__getattr__ foo "bar") 1))
-(.__setitem__ foo "bar" (.__add__ (.__getitem__ foo "bar") 1))
-```
-
-```js
-var a = a.__add__(1);
-foo['bar'] = foo.bar.__add__(1);
-foo.__setitem__('bar', foo.__getitem__('bar').__add__(1));
-```
-
-## Functions and methods
-
-```python
-def foo():
-   pass
-class Bar:
-	def baz():
-		pass
-def quux():
-	pass
-```
-
-```AST
-(fn foo)
-(class Bar
-   (fn baz))
-(fn quux)
-```
-
-```js
-function foo() {}
-class Bar {
-  baz() {}
-}
-function quux() {}
-```
-## and, or, ifelse
-
-```python
-a and b
-a or b
-a if t else b
-```
-
-```AST
-(and a b)
-(or a b)
-(ifelse t a b)
-```
-
-```js
-a && b
-a || b
-t ? a : b
-```
-
-## Built-in names
-
-```python
-None
-True
-False
-Nil
-pass
-```
-
-```AST
-None
-True
-False
-Nil
-pass
-```
-
-```js
-undefined
-true
-false
-Nil
-```
-
-- `Nil` is an object for methodcalls on Null/undefined, ie `(might_be_null ?? Nil).__eq__(a)`
-
-## Method calls
-
-```python
-foo.bar(baz)
-a.b.c()
-```
-
-```AST
-(.bar foo baz)
-(.c (.__getattr__ a "b"))
-```
-
-```js
-foo.bar(baz)
-a.b.c()
-```
-
-## While
-
-```python
-while(True):
-	123
-	456
-```
-
-```AST
-(while True 123 456)
-```
-
-```js
-while(true) { 123; 456 }
-```
-
-
-
 ## Lists and dicts
 
+List and dicts are also available. Lists maps to JS-arrays. Dicts are not mapped to JS-Objects due to Objects overlap between attributes and items.
+
 ```python
-[1,2,*o]
+[1, 2, *o]
 {"foo": 1, "bar": 2, **o}
-(1,2,3)
+(1, 2, 3)
 ```
 
 ```AST
@@ -304,7 +99,85 @@ __dict("foo", 1, "bar", 2, ...o);
 [1,2,3];
 ```
 
-## Global
+TODO: sets etc.
+## Names
+
+Names are pass through with AST-nodes .
+
+```python
+some_name
+```
+
+```AST
+(name "some_name")
+```
+
+```js
+some_name
+```
+
+
+Some built-in names needs to be mapped from Python to JavaScript naming. 
+- `pass` is just the empty string.
+- `Nil` is an mupyjs-runtime object, for methods that would error if called on undefined, – for instance `(might_be_null ?? Nil).__eq__(a)`
+
+```python
+foo
+None
+True
+False
+pass
+Nil
+```
+
+```AST
+foo
+None
+True
+False
+pass
+Nil
+```
+
+```js
+foo
+undefined
+true
+false
+
+Nil
+```
+## Assignment
+
+variables should be assigned as local vars with var the first time it is seen within a scope, to has similar semantics as python
+
+```python
+foo = 123
+foo = bar(baz)
+
+def bar():
+	foo = 432
+	foo = "hello"
+```
+
+```AST
+(set foo 123)
+(set foo (.__call__ bar baz))
+(fn bar (set foo 432) (set foo "hello"))
+```
+
+```js
+var foo = 123;
+foo = bar(baz);
+function bar() {
+	var foo = 432;
+	foo = "hello";
+}
+```
+### global and nonlocal
+
+`global` and `nonlocal` can be used to affect the scoping.
+
 
 ```python
 def foo():
@@ -326,9 +199,143 @@ function foo() {
 }
 ```
 
-## Unary operators
+`var` is used instead of `let`/`const`, to match pythons scoping rule, where a value can be assigned to function-scope from within an if-block etc.
+### Augmented assignment
 
-Unary `+` omitted until there is a concrete use case for it.
+Augemented assignment are expanded:
+
+```python
+a += 1
+foo.bar += 1
+foo["bar"] += 1
+```
+
+```AST
+(set a (.__add__ a 1))
+(.__setattr__ foo "bar" (.__add__ (.__getattr__ foo "bar") 1))
+(.__setitem__ foo "bar" (.__add__ (.__getitem__ foo "bar") 1))
+```
+
+```js
+var a = a.__add__(1);
+foo['bar'] = foo.bar.__add__(1);
+foo.__setitem__('bar', foo.__getitem__('bar').__add__(1));
+```
+
+## Functions
+Arguments are either positional or keyword, and cannot be both:
+
+```python
+def foo(a, b, *, d, e):
+	return 3
+```
+
+```AST
+(fn foo (arg a) (arg b) (kwarg d) (kwarg e) (return 3))
+```
+
+```js
+function foo(a, b, {d, e}) {
+	return 3;
+}
+```
+
+Kwargs are passed as last argument if present in the function call. Includes special property `{_kwargs: true}` similar to transcrypt.
+
+```python
+foo(123, c="hello")
+```
+
+```AST
+(.__call__ foo 123 (kwargs "c" "hello"))
+```
+
+```js
+foo(123, {_kwargs: true, c: "hello"})
+```
+
+Splats are also supported
+
+```python
+foo(blah, *args)
+bar(**kwargs)
+baz("foo", bar=123)
+```
+
+```AST
+(.__call__ foo blah (splat args))
+(.__call__ bar (kwargs (splat kwargs)))
+(.__call__ baz "foo" (kwargs "bar" 123))
+```
+
+```js
+foo(blah, ...args)
+bar({"_kwargs": true, ...kwargs})
+baz("foo", {"_kwargs": true, bar: 123})
+```
+
+
+"Functions" that starts with an uppecase letter are constructors, and invoked with `new` under JavaScript
+
+```python
+SomeClass(123)
+```
+
+```AST
+(.__call__ SomeClass 123)
+```
+
+```js
+new SomeClass(123)
+```
+
+"Functions" are either methods (with `self` as first parameter) or functions, and cannot be called in both ways.
+
+```python
+def foo(self):
+	pass
+def foo(blah):
+	pass
+```
+
+```AST
+(fn foo (arg self))
+(fn foo (arg blah))
+```
+
+```js
+function foo() { const self = this; }
+function foo(blah) { }
+```
+
+### Generator functions
+TODO: implement generator functions and `yield`
+### Async
+TODO: implement async/await
+## Method calls
+
+Method calls compiles as such:
+
+```python
+foo.bar(baz)
+a.b.c()
+```
+
+```AST
+(.bar foo baz)
+(.c (.__getattr__ a "b"))
+```
+
+```js
+foo.bar(baz)
+a.b.c()
+```
+
+Everything that behaves like a method-call is mappes to method-call in the AST, this includes attribute/item-access, such as  `.__getattr__`, function calls `.__call__`, operators  `+` becomes `.__add__` and so on.
+
+This also matches the generated JS, – as we cannot use JS operators directly when we want operator overloading. (Instead of method-calls, it could also be implemented with functions, – but this is slower due to the polymorphic inline cache in modern javascript engines)
+
+The unary operators are:
 
 ```python
 -4
@@ -351,7 +358,7 @@ not False
 false.__not__();
 ```
 
-## Binary operators
+The binary operators are:
 
 ```python
 a * b 
@@ -401,7 +408,7 @@ a.__and__(b);
 a.__matmul__(b);
 ```
 
-## Comparison
+The comparison operators are:
 
 ```python
 a < b
@@ -442,37 +449,16 @@ b.__contains__(a);
 b.__contains__(a).__not__();
 ```
 
-## Assignment
+Note that `?? Nil` needs to be added to those operators that may be called on None/undefined
 
-variables should be assigned as local vars with var the first time it is seen within a scope, to has similar semantics as python
+TODO: `?? Nil` on unary `not`
 
-```python
-foo = 123
-foo = bar(baz)
 
-def bar():
-	foo = 432
-	foo = "hello"
-```
+## Blocks and modules
 
-```AST
-(set foo 123)
-(set foo (.__call__ bar baz))
-(fn bar (set foo 432) (set foo "hello"))
-```
+The `(do expr1 expr2 ...)` AST-node represent a sequence of statements/expressions. Modules/files are encapsulated in a `do`-block.
 
-```js
-var foo = 123;
-foo = bar(baz);
-function bar() {
-	var foo = 432;
-	foo = "hello";
-}
-```
-
-## Imports
-
-Should be able to import modules as:
+Module import are supported as:
 
 ```python
 import foo
@@ -495,7 +481,58 @@ import * as bar from "@/foo"
 import {x, y, z} from "@/foo/bar"
 ```
 
-## For-loop
+TODO: exports
+
+## Control flow
+
+Various control-flow is implemented, such as:
+
+If-else statements:
+
+```python
+if a: 1
+if a:
+  b 
+  c
+
+if e:
+  f
+elif g:
+  h
+  i
+else:
+  j
+```
+
+```AST
+(if a 1)
+(if a (do b c))
+(if e f g (do h i) j)
+```
+
+```js
+if(a) { 1 }
+if(a) { b ; c }
+if(e) { f } else if(g) { h; i} else {j}
+```
+
+While-loops:
+
+```python
+while(True):
+	123
+	456
+```
+
+```AST
+(while True 123 456)
+```
+
+```js
+while(true) { 123; 456 }
+```
+
+For-loops:
 
 ```python
 for x in range(10):
@@ -523,141 +560,143 @@ for(x of range(10)) {
 ```
 
 
-## Functions
+## Conditional expressions
 
-Arguments are either positional or keyword, and cannot be both:
+Controls-flow in expressions are also implemented:
 
 ```python
-def foo(a, b, *, d, e):
-	pass
+a and b
+a or b
+a if t else b
 ```
 
 ```AST
-(fn foo (arg a) (arg b) (kwarg d) (kwarg e))
+(and a b)
+(or a b)
+(ifelse t a b)
 ```
 
 ```js
-function foo(a, b, {d, e}) {
+a && b
+a || b
+t ? a : b
+```
+
+## Exceptions
+
+Execptions are also implemented, – but the name of the caught exception must be the same acroess all execpt in a try-block:
+
+```python
+try:
+	pass
+except E:
+	1
+	2
+try:
+	3
+	4
+except E:
+	5	
+except E2 as e:
+	6	
+finally:
+	7	
+
+```
+
+```AST
+(try pass
+	(except E __exception 1 2))
+(try (do 3 4)
+    (except E e 5)
+    (except E2 e 6)
+	(finally 7))
+
+```
+
+```js
+try { } 
+catch (__exception) {
+  if (__exception instanceof E) { 1; 2; }
 }
+try { 3; 4 } 
+catch (e) {
+  if (e instanceof E) { 5 } 
+  else if (e instanceof E2) { 6 }
+} finally { 7 }
 ```
 
-Kwargs are passed as last argument if present in the function call. Includes special property `{_kwargs: true}` similar to transcrypt.
+## Classes
 
+Classes are defined as:
 ```python
-foo(123, c="hello")
-```
-
-```AST
-(.__call__ foo 123 (kwargs "c" "hello"))
-```
-
-```js
-foo(123, {_kwargs: true, c: "hello"})
-```
-"Functions" that starts with an uppecase letter are constructors, and invoked with `new` under JavaScript
-
-```python
-SomeClass(123)
-```
-
-```AST
-(.__call__ SomeClass 123)
-```
-
-```js
-new SomeClass(123)
-```
-
-"Functions" are either methods (with `self` as first parameter) or functions, and cannot be called in both ways.
-
-```python
-def foo(self):
-	pass
-def foo(blah):
+def foo():
+   pass
+class Bar:
+	def baz():
+		pass
+def quux():
 	pass
 ```
 
 ```AST
-(fn foo (arg self))
-(fn foo (arg blah))
+(fn foo)
+(class Bar
+   (fn baz))
+(fn quux)
 ```
 
 ```js
-function foo() { const self = this; }
-function foo(blah) { }
+function foo() {}
+class Bar {
+  baz() {}
+}
+function quux() {}
 ```
+
+TODO: inheritance
+
+## List comprehensions / generator functions
+
+```python
+(x for x in range(2))
+(x for x in range(12) if x.even())
+[x+y for x in range(5) for y in range(5)]
+```
+
+```AST
+(generator x 
+    (iter x (.__call__ range 2)))
+(generator x 
+    (iter x (.__call__ range 12))
+    (.even x))
+(.__call__ list
+    (generator (.__add__ x y)
+        (iter x (.__call__ range 5))
+        (iter y (.__call__ range 5))))
+```
+
+
+```js
+(function* () {
+  for (const x of range(2)) yield x;
+})();
+(function*() {
+  for(const x of range(12))
+    if(x.even())
+      yield x
+})()
+list((function*() {
+  for(const x of range(5))
+    for(const y of range(5))
+      yield x.__add__(y)
+})())
+```
+
 
 # Similar initiatives and differences
 
 - https://www.transcrypt.org almost but not quite what I want. Main difference is that transcrypt is more mature, but less optimised. Some APIs and approaches here are inspired by transcrypt
-
-
-# AST
-### Names
-
-```python
-some_name
-```
-
-```AST
-(name "some_name")
-```
-
-```js
-some_name
-```
-### Literal `(num "123")` or `"str"`
-
-### Function calls
-```python
-foo(blah, *args)
-bar(**kwargs)
-baz("foo", bar=123)
-```
-
-```AST
-(.__call__ foo blah (splat args))
-(.__call__ bar (kwargs (splat kwargs)))
-(.__call__ baz "foo" (kwargs "bar" 123))
-```
-
-```js
-foo(blah, ...args)
-bar({"_kwargs": true, ...kwargs})
-baz("foo", {"_kwargs": true, bar: 123})
-```
-### methodcall `(.`_methodName_` obj ..args)`
-- `call obj method args()` sugar: `obj.method(arg-seq)`
-	- sugar: `o.methodname(...annotations, ...args)` 
-	- sugar: `o.(...)` = `o(...)` or `new O(...)` if o is uppercase. Not overloadable
-	- sugar: `o.__get__("foo")` = `o["foo"]`
-	- sugar: `o.__getattr__("foo")` = `o.foo`
-	- sugar: `o.__set__("foo", bar)` = `o["foo"] = bar`
-	- sugar: `o.__setattr__("foo", bar)` = `o.foo = bar`
-	- sugar: `a.__add__(b)`... = `a+b`...
-	- sugar: `[...]` = `List(...)`, `{...}` = `Dict(key, val, ...)` 
-	- sugar: `"...".__format__(a, b)` = `f"foo {a}  {b}"`
-#### non-method call and object instantiation `(. fn ..args)`
-- Python: `fn(..args)`
-- JavaScript: `fn(..args)` or `new Fn(..args)` if fn i starting with an uppercase letter
-### And/or `(and a b)` / `(or a b)`
-
-### Outer/global `(set name val)`
-
-### Splats `(splat obj)`
-
-### Classes
-
-### Dicts
-
-### Function definitions `fn`, `arg`
-
-### If-else
-
-### blocks `do`
-
-### subscripts
-### Slices
 
 
 # Spec and test
@@ -677,145 +716,20 @@ print("hello world")
 ```js
 print("hello world")
 ```
-# AST Object
+# TODO/missing
 
-Each AST-node has
-- type
-- meta-data
-- children (either AST-nodes or strings)
-
-AST-nodes can be serialised(without meta) as `[type ..children]`
-
-# AST types
-## Expressions
-### Name `(name "str")`
-### Literal `(num "123")` or `"str"`
-
-### Call `(.`_methodName_` obj ..args)`
-- `call obj method args()` sugar: `obj.method(arg-seq)`
-	- sugar: `o.methodname(...annotations, ...args)` 
-	- sugar: `o.(...)` = `o(...)` or `new O(...)` if o is uppercase. Not overloadable
-	- sugar: `o.__get__("foo")` = `o["foo"]`
-	- sugar: `o.__getattr__("foo")` = `o.foo`
-	- sugar: `o.__set__("foo", bar)` = `o["foo"] = bar`
-	- sugar: `o.__setattr__("foo", bar)` = `o.foo = bar`
-	- sugar: `a.__add__(b)`... = `a+b`...
-	- sugar: `[...]` = `List(...)`, `{...}` = `Dict(key, val, ...)` 
-	- sugar: `"...".__format__(a, b)` = `f"foo {a}  {b}"`
-#### non-method call and object instantiation `(. fn ..args)`
-- Python: `fn(..args)`
-- JavaScript: `fn(..args)` or `new Fn(..args)` if fn i starting with an uppercase letter
-### And/or `(and a b)` / `(or a b)`
-### Ternary `(ifelse p a b)`
-- python `a if p else b`
-- javascript `p ? a : b`
-# Statements
-## Bind
-### Local `(let name val)`
-### Iterator (only in for) `(iter name seq)`
-### Arguments (only in fn) `(arg name default)`
-### Import `(import name module)`
-- Python: `import module [as name]`
-- JS: `import * as name from module`
-### Partial import `(import-from name module)`
-- Python: `import var from module`
-- JS: `import {vars} from module`
-### Define function/method `(def name (arg a) (arg b) ..body)`
-### Define class `(class name (extends class)? ..method-defs)`
-## Annotate 
 (immediatly after name in binding)
 ### Documentation `(doc "some doc")`
+Generated from doc-strings, and comments
 ### Type annotation/cast `(type "typename")`
+Generated from type hints
 ### Async `(async)`
 ### Decorators `(decorate (. fn ..args) (.fn ..args))`
-
-
-
-## Control
-### For `(for (iter name seq) ...body)`
-### Try `(try body ..handlers)`
-### Except (only try-handler) `(except (let name) ..body)`
-Only catches `Exception`
-### Finally (only as try-handler) `(finally ..body)`
-### While `(while cond ..body)`
-### If/else `(if pred body ...pred/body else-body)`
 ### Yield `(yield val)`
-### Return/break/continue `(return val)`, `(break)`, `(continue)`
+### break/continue  `(break)`, `(continue)`
 ### Raise `(. raise exception)`
 - Python: `raise exception`
 - JavaScript `throw exception` (exception  must be instanceof Exception)
-## Misc
-### Block `(do ..body)`
-### Splat `(.. obj)`
-# Old notes
-Lisp-tree-structure from python subset
-
-- AST-nodes `[type, {metadata}, ...children]`
-	- **splat** `(.. obj)`
-	- **block** `(do ...)`
-	- **bind** 
-		- `(let name val)` define/redefine local
-		- `(set name val)`  overwrite outer
-		- `(var name...)` assigned iter
-	- **control** `{type, children}`
-		- `(for (var a) seq ...body)`
-			- sugar `for a b c` = `for a in b do? c`
-		- `(try body ..handlers)`
-		- `(except (let name) ..body` (only as try-handler)
-		- `(finally ..body)`
-		- `(while cond ..body)`
-		- `(if cond1 body1 [cond2 body2...] [else])
-			- sugar `ifelse a a b` = `a or b`
-			- sugar `ifelse a b a` = `a and b`
-			- sugar `ifelse a b` = `if a b`
-			- sugar `ifelse a b c` = `if a b else c`
-			- sugar `ifelse a b (ifelse c d e)`  `if a b elif c d else e`
-		- `(return val)`, `(yield val)`, `(raise val)`, `(break)`, `(continue)`
-	- **class** (...)
-	- **function** `(fn async? :type #"doc"  name (var a b c) ...body)`
-
-- AST annotations
-	- `async` `static` attatches to following node
-	- `\n\n/*...*/` attaches docstring to following node
-	- `: type` attaches to preceding node
-
-type-annotations: cast(type, expr)
-
 # notes
-
-
-
 [[Minimal Python notes]]
-[[Mupyjs]] is a subset of Python and MicroPython optimised to translate and run efficiently on JavaScript. It has certain semantic restrictions and syntactic requirements:
-
-- Object instantiation is done with `new(Class(...))` instead of just `Class(...)`
-- Function parameters are either args or kwargs, not both. If you want a parameter to be positional, make sure a `/` is added to the parameter list.
-- Separation of functions/method, if `self` as first paramter, they can only be called as methods on an object.
-- Use type-hints if arithmetic should run fast.
-- It is not possible to test if an object is a `float` or `int` at runtime. Use `is_num(n)` to test if it is a number. 
-### Compilation to JS
-[[Mupyjs]] translates directly into js.
-- Every value must be an object, special Null object is used instead of undefined/nil.
-- operators are such as `+` compiles to `__add__` etc. unless type hints indicate they are integer or string.
-- truth value is `.__bool__()` unless typehints indicate that it is already a boolean
----
-
-----
-
-
-
-- `a[b:c]` -> `a.__getitem__(slice(b,c))`
-
-Library
-- slice
-- isinstance
-
-# Changelog
-
-## 2024-05- Version 0.1
-- [x] initial parser
-- [x] AST-prettyprinter
-- [x] run example from README.md
-- [x] initial compiler
-- [x] JS prettier service
-- [x] test examples from README.md
+  
