@@ -1,0 +1,656 @@
+(module
+  (import_as "json" json)
+  (import_from "mupyjs/AST" AST pp)
+  (class
+    CompileError
+    (fn
+      __init__
+      (arg self)
+      (arg message)
+      (.__setattr__ self "message" message)))
+  (set
+    name_map
+    (.__dict "True" "true" "False" "false" "None" "undefined" "pass" ""))
+  (class
+    Compiler
+    (fn __init__ (arg self) (.__setattr__ self "compiling_class" False))
+    (fn
+      compile_arg
+      (arg self)
+      (arg ast)
+      (return (.__call__ self (.__getitem__ (.__getattr__ ast "children") 0))))
+    (fn
+      compile_and
+      (arg self)
+      (arg ast)
+      (return
+        (.__add__
+          (.__add__
+            (.__add__
+              (.__add__
+                "("
+                (.__call__
+                  self
+                  (.__getitem__ (.__getattr__ ast "children") 0)))
+              "&&")
+            (.__call__ self (.__getitem__ (.__getattr__ ast "children") 1)))
+          ")")))
+    (fn
+      compile_class
+      (arg self)
+      (arg ast)
+      (.__setattr__ self "compiling_class" True)
+      (set
+        result
+        (.__add__
+          (.__add__
+            "class "
+            (.__call__ self (.__getitem__ (.__getattr__ ast "children") 0)))
+          "{"))
+      (for
+        (iter
+          child
+          (.__getitem__
+            (.__getattr__ ast "children")
+            (.__call__ slice 1 None None)))
+        (if
+          (and
+            (.__eq__ (.__getattr__ child "type") "fn")
+            (.__eq__
+              (.__getitem__
+                (.__getattr__
+                  (.__getitem__ (.__getattr__ child "children") 0)
+                  "children")
+                0)
+              "__init__"))
+          (set
+            child
+            (.__call__
+              AST
+              "fn"
+              (.__call__ AST "name" "constructor")
+              (splat
+                (.__getitem__
+                  (.__getattr__ child "children")
+                  (.__call__ slice 1 None None))))))
+        (set result (.__add__ result (.__call__ self child))))
+      (return (.__add__ result "}")))
+    (fn
+      compile_dict
+      (arg self)
+      (arg ast)
+      (set children (.__list))
+      (set i 0)
+      (while
+        (.__lt__ i (.__call__ len (.__getattr__ ast "children")))
+        (if
+          (.__call__
+            isinstance
+            (.__getitem__ (.__getattr__ ast "children") i)
+            str)
+          (do
+            (.append
+              children
+              (.__add__
+                (.__add__
+                  (.__call__
+                    self
+                    (.__getitem__ (.__getattr__ ast "children") i))
+                  ":")
+                (.__call__
+                  self
+                  (.__getitem__ (.__getattr__ ast "children") (.__add__ i 1)))))
+            (set i (.__add__ i 2)))
+          (do
+            (.__call__
+              assert
+              (.__eq__
+                (.__getattr__
+                  (.__getitem__ (.__getattr__ ast "children") i)
+                  "type")
+                "splat"))
+            (.append
+              children
+              (.__call__ self (.__getitem__ (.__getattr__ ast "children") i)))
+            (set i (.__add__ i 1)))))
+      (return (.__add__ (.__add__ "{" (.join ", " children)) "}")))
+    (fn
+      compile_do
+      (arg self)
+      (arg ast)
+      (return (.join ";" (.__call__ map self (.__getattr__ ast "children")))))
+    (fn
+      compile_fn
+      (arg self)
+      (arg ast)
+      (set compiling_class (.__getattr__ self "compiling_class"))
+      (.__setattr__ self "compiling_class" False)
+      (set result (ifelse compiling_class "" "function "))
+      (set i 1)
+      (set args (.__list))
+      (set set_self "")
+      (while
+        (and
+          (.__lt__ i (.__call__ len (.__getattr__ ast "children")))
+          (.__eq__
+            (.__getattr__
+              (.__getitem__ (.__getattr__ ast "children") i)
+              "type")
+            "arg"))
+        (if
+          (.__eq__
+            (.__getitem__
+              (.__getattr__
+                (.__getitem__
+                  (.__getattr__
+                    (.__getitem__ (.__getattr__ ast "children") i)
+                    "children")
+                  0)
+                "children")
+              0)
+            "self")
+          (set set_self "const self = this;")
+          (.append
+            args
+            (.__call__ self (.__getitem__ (.__getattr__ ast "children") i))))
+        (set i (.__add__ i 1)))
+      (set kwargs "")
+      (while
+        (and
+          (.__lt__ i (.__call__ len (.__getattr__ ast "children")))
+          (.__eq__
+            (.__getattr__
+              (.__getitem__ (.__getattr__ ast "children") i)
+              "type")
+            "kwarg"))
+        (set
+          kwarg
+          (.__getitem__
+            (.__getattr__
+              (.__getitem__ (.__getattr__ ast "children") i)
+              "children")
+            0))
+        (if
+          (.__eq__ (.__getattr__ kwarg "type") "splat")
+          (set
+            kwargs
+            (.__add__
+              kwargs
+              (.__add__
+                (.__add__
+                  "..."
+                  (.__call__
+                    self
+                    (.__getitem__ (.__getattr__ kwarg "children") 0)))
+                ",")))
+          (set
+            kwargs
+            (.__add__
+              kwargs
+              (.__add__ (.__getitem__ (.__getattr__ kwarg "children") 0) ","))))
+        (set i (.__add__ i 1)))
+      (if kwargs (.append args (.__add__ (.__add__ "{" kwargs) "}")))
+      (set
+        result
+        (.__add__
+          result
+          (.__add__
+            (.__add__
+              (.__add__
+                (.__add__
+                  (.__call__
+                    self
+                    (.__getitem__ (.__getattr__ ast "children") 0))
+                  "(")
+                (.join "," args))
+              "){")
+            set_self)))
+      (while
+        (.__lt__ i (.__call__ len (.__getattr__ ast "children")))
+        (set
+          result
+          (.__add__
+            result
+            (.__add__
+              (.__call__ self (.__getitem__ (.__getattr__ ast "children") i))
+              ";")))
+        (set i (.__add__ i 1)))
+      (set result (.__add__ result "}"))
+      (.__setattr__ self "compiling_class" compiling_class)
+      (return result))
+    (fn
+      compile_for
+      (arg self)
+      (arg ast)
+      (set iter (.__getitem__ (.__getattr__ ast "children") 0))
+      (set vartype "")
+      (if
+        (.__contains__ (.__getattr__ iter "meta") "vartype")
+        (set
+          vartype
+          (.__add__ (.__getitem__ (.__getattr__ iter "meta") "vartype") " ")))
+      (return
+        (.__add__
+          (.__add__
+            (.__add__
+              (.__add__
+                (.__add__
+                  (.__add__
+                    (.__add__ (.__add__ "for(" vartype) " ")
+                    (.__call__
+                      self
+                      (.__getitem__ (.__getattr__ iter "children") 0)))
+                  " of ")
+                (.__call__
+                  self
+                  (.__getitem__ (.__getattr__ iter "children") 1)))
+              "){")
+            (.__call__ self (.__getitem__ (.__getattr__ ast "children") 1)))
+          "}")))
+    (fn
+      compile_if
+      (arg self)
+      (arg ast)
+      (set
+        result
+        (.__add__
+          (.__add__
+            (.__add__
+              (.__add__
+                "if("
+                (.__call__
+                  self
+                  (.__getitem__ (.__getattr__ ast "children") 0)))
+              "){")
+            (.__call__ self (.__getitem__ (.__getattr__ ast "children") 1)))
+          "}"))
+      (set i 2)
+      (while
+        (.__lt__ i (.__sub__ (.__call__ len (.__getattr__ ast "children")) 1))
+        (set
+          result
+          (.__add__
+            result
+            (.__add__
+              (.__add__
+                (.__add__
+                  (.__add__
+                    "else if("
+                    (.__call__
+                      self
+                      (.__getitem__ (.__getattr__ ast "children") i)))
+                  "){")
+                (.__call__
+                  self
+                  (.__getitem__ (.__getattr__ ast "children") (.__add__ i 1))))
+              "}")))
+        (set i (.__add__ i 2)))
+      (if
+        (.__lt__ i (.__call__ len (.__getattr__ ast "children")))
+        (set
+          result
+          (.__add__
+            result
+            (.__add__
+              (.__add__
+                "else{"
+                (.__call__
+                  self
+                  (.__getitem__ (.__getattr__ ast "children") i)))
+              "}"))))
+      (return result))
+    (fn
+      compile_import_as
+      (arg self)
+      (arg ast)
+      (return
+        (.__add__
+          (.__add__
+            (.__add__
+              (.__add__
+                "import * as "
+                (.__call__
+                  self
+                  (.__getitem__ (.__getattr__ ast "children") 1)))
+              " from \"@/")
+            (.__getitem__ (.__getattr__ ast "children") 0))
+          "\"")))
+    (fn
+      compile_import_from
+      (arg self)
+      (arg ast)
+      (return
+        (.__add__
+          (.__add__
+            (.__add__
+              (.__add__
+                "import {"
+                (.join
+                  ", "
+                  (generator
+                    (.__call__ self child)
+                    (iter
+                      child
+                      (.__getitem__
+                        (.__getattr__ ast "children")
+                        (.__call__ slice 1 None None))))))
+              "} from \"@/")
+            (.__getitem__ (.__getattr__ ast "children") 0))
+          "\"")))
+    (fn
+      compile_method_call
+      (arg self)
+      (arg ast)
+      (set
+        method
+        (.__getitem__ (.__getattr__ ast "type") (.__call__ slice 1 None None)))
+      (return
+        (.__add__
+          (.__add__
+            (.__add__
+              (.__add__
+                (.__add__
+                  (.__add__
+                    "("
+                    (.__call__
+                      self
+                      (.__getitem__ (.__getattr__ ast "children") 0)))
+                  ").")
+                method)
+              "(")
+            (.join
+              ", "
+              (generator
+                (.__call__ self child)
+                (iter
+                  child
+                  (.__getitem__
+                    (.__getattr__ ast "children")
+                    (.__call__ slice 1 None None))))))
+          ")")))
+    (fn
+      compile_module
+      (arg self)
+      (arg ast)
+      (return
+        (.join
+          ";\\n"
+          (generator
+            (.__call__ self child)
+            (iter child (.__getattr__ ast "children"))))))
+    (fn
+      compile_name
+      (arg self)
+      (arg ast)
+      (.__call__
+        assert
+        (.__eq__ (.__call__ len (.__getattr__ ast "children")) 1))
+      (if
+        (.__contains__
+          name_map
+          (.__getitem__ (.__getattr__ ast "children") 0))
+        (return
+          (.__getitem__
+            name_map
+            (.__getitem__ (.__getattr__ ast "children") 0))))
+      (return (.__getitem__ (.__getattr__ ast "children") 0)))
+    (fn
+      compile_num
+      (arg self)
+      (arg ast)
+      (.__call__
+        assert
+        (.__eq__ (.__call__ len (.__getattr__ ast "children")) 1))
+      (return (.__call__ str (.__getitem__ (.__getattr__ ast "children") 0))))
+    (fn
+      compile_set
+      (arg self)
+      (arg ast)
+      (set vartype "")
+      (if
+        (.__contains__ (.__getattr__ ast "meta") "vartype")
+        (set
+          vartype
+          (.__add__ (.__getitem__ (.__getattr__ ast "meta") "vartype") " ")))
+      (return
+        (.__add__
+          (.__add__
+            (.__add__
+              vartype
+              (.__call__ self (.__getitem__ (.__getattr__ ast "children") 0)))
+            " = ")
+          (.__call__ self (.__getitem__ (.__getattr__ ast "children") 1)))))
+    (fn
+      compile_splat
+      (arg self)
+      (arg ast)
+      (.__call__
+        assert
+        (.__eq__ (.__call__ len (.__getattr__ ast "children")) 1))
+      (return
+        (.__add__
+          "..."
+          (.__call__ self (.__getitem__ (.__getattr__ ast "children") 0)))))
+    (fn
+      compile_try
+      (arg self)
+      (arg ast)
+      (set body (.__list))
+      (set excepts (.__list))
+      (set finallyBody (.__list))
+      (for
+        (iter child (.__getattr__ ast "children"))
+        (if
+          (.__eq__ (.__getattr__ child "type") "except")
+          (.append excepts child)
+          (.__eq__ (.__getattr__ child "type") "finally")
+          (set finallyBody child)
+          (.append body child)))
+      (set
+        result
+        (.__add__ (.__add__ "try{" (.join ";" (.__call__ map self body))) "}"))
+      (if
+        (.__gt__ (.__call__ len excepts) 0)
+        (do
+          (set
+            name
+            (.__call__
+              self
+              (.__getitem__
+                (.__getattr__ (.__getitem__ excepts 0) "children")
+                1)))
+          (set
+            result
+            (.__add__ result (.__add__ (.__add__ "catch(" name) "){")))
+          (for
+            (iter e excepts)
+            (set
+              result
+              (.__add__
+                result
+                (.__add__
+                  (.__add__
+                    (.__add__ (.__add__ "if(" name) " instanceof ")
+                    (.__call__
+                      self
+                      (.__getitem__ (.__getattr__ e "children") 0)))
+                  "){")))
+            (set
+              result
+              (.__add__
+                result
+                (.join
+                  ";"
+                  (.__call__
+                    map
+                    self
+                    (.__getitem__
+                      (.__getattr__ e "children")
+                      (.__call__ slice 2 None None))))))
+            (set result (.__add__ result "} else ")))
+          (set
+            result
+            (.__add__
+              (.__getitem__ result (.__call__ slice None (.__neg__ 6) None))
+              "}"))))
+      (if
+        finallyBody
+        (set
+          result
+          (.__add__
+            result
+            (.__add__
+              (.__add__
+                "finally{"
+                (.join
+                  ";"
+                  (.__call__ map self (.__getattr__ finallyBody "children"))))
+              "}"))))
+      (return result))
+    (fn
+      method___eq__
+      (arg self)
+      (arg ast)
+      (return
+        (.__add__
+          (.__add__
+            (.__add__
+              (.__add__
+                "("
+                (.__call__
+                  self
+                  (.__getitem__ (.__getattr__ ast "children") 0)))
+              "??Nil).__eq__(")
+            (.__call__ self (.__getitem__ (.__getattr__ ast "children") 1)))
+          ")")))
+    (fn
+      method___ne__
+      (arg self)
+      (arg ast)
+      (return
+        (.__add__
+          (.__add__
+            (.__add__
+              (.__add__
+                "("
+                (.__call__
+                  self
+                  (.__getitem__ (.__getattr__ ast "children") 0)))
+              "??Nil).__ne__(")
+            (.__call__ self (.__getitem__ (.__getattr__ ast "children") 1)))
+          ")")))
+    (fn
+      method___is
+      (arg self)
+      (arg ast)
+      (return
+        (.__add__
+          (.__add__
+            (.__add__
+              (.__add__
+                "("
+                (.__call__
+                  self
+                  (.__getitem__ (.__getattr__ ast "children") 0)))
+              ") === (")
+            (.__call__ self (.__getitem__ (.__getattr__ ast "children") 1)))
+          ")")))
+    (fn
+      method___fstr
+      (arg self)
+      (arg ast)
+      (return
+        (.join
+          "+"
+          (.__call__
+            list
+            (generator
+              (.__call__ self child)
+              (iter child (.__getattr__ ast "children")))))))
+    (fn
+      method___isnot
+      (arg self)
+      (arg ast)
+      (return
+        (.__add__
+          (.__add__
+            (.__add__
+              (.__add__
+                "("
+                (.__call__
+                  self
+                  (.__getitem__ (.__getattr__ ast "children") 0)))
+              ") !== (")
+            (.__call__ self (.__getitem__ (.__getattr__ ast "children") 1)))
+          ")")))
+    (fn
+      method___call__
+      (arg self)
+      (arg ast)
+      (set prefix "(")
+      (if
+        (and
+          (.__eq__
+            (.__getattr__
+              (.__getitem__ (.__getattr__ ast "children") 0)
+              "type")
+            "name")
+          (.isupper
+            (.__getitem__
+              (.__getitem__
+                (.__getattr__
+                  (.__getitem__ (.__getattr__ ast "children") 0)
+                  "children")
+                0)
+              0)))
+        (set prefix "new ("))
+      (return
+        (.__add__
+          (.__add__
+            (.__add__
+              (.__add__
+                prefix
+                (.__call__
+                  self
+                  (.__getitem__ (.__getattr__ ast "children") 0)))
+              ")(")
+            (.join
+              ", "
+              (generator
+                (.__call__ self child)
+                (iter
+                  child
+                  (.__getitem__
+                    (.__getattr__ ast "children")
+                    (.__call__ slice 1 None None))))))
+          ")")))
+    (fn
+      __call__
+      (arg self)
+      (arg ast)
+      (if (.__call__ isinstance ast str) (return (.dumps json ast)))
+      (set type (.__getattr__ ast "type"))
+      (if
+        (.__eq__ (.__getitem__ type 0) ".")
+        (do
+          (set
+            handler
+            (.__call__
+              getattr
+              self
+              (.__add__
+                "method_"
+                (.__getitem__ type (.__call__ slice 1 None None)))
+              None))
+          (if
+            (.__not__ handler)
+            (set handler (.__call__ getattr self "compile_method_call" None))))
+        (set handler (.__call__ getattr self (.__add__ "compile_" type) None)))
+      (if
+        handler
+        (return (.__call__ handler ast))
+        (do
+          (.__call__ print (.__call__ pp ast))
+          (set error (.__fstr "No compile-handler for " type))
+          (.__call__ raise (.__call__ CompileError error))))))
+  (fn compile (arg ast) (return (.__call__ (.__call__ Compiler) ast))))

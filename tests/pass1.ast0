@@ -1,0 +1,154 @@
+(module
+  (import_from "mupyjs/AST" AST pp)
+  (class
+    Pass1Error
+    (fn
+      __init__
+      (arg self)
+      (arg message)
+      (.__setattr__ self "message" message)))
+  (class
+    Pass_1
+    (fn __init__ (arg self) (.__setattr__ self "scope" (.__dict)) pass)
+    (fn
+      handle_fn
+      (arg self)
+      (arg ast)
+      (set prev_scope (.__getattr__ self "scope"))
+      (.__setattr__ self "scope" (.__dict))
+      (set
+        children
+        (.__call__
+          list
+          (generator
+            child
+            (iter child (.__getattr__ ast "children"))
+            (.__not__
+              (and
+                (.__eq__ (.__getattr__ child "type") "name")
+                (.__eq__
+                  (.__getitem__ (.__getattr__ child "children") 0)
+                  "pass"))))))
+      (set
+        result
+        (.__call__
+          AST
+          "fn"
+          (.__getattr__ ast "meta")
+          (splat (.__call__ map self children))))
+      (.__setattr__ self "scope" prev_scope)
+      (return result))
+    (fn
+      handle_global
+      (arg self)
+      (arg ast)
+      (for
+        (iter name (.__getattr__ ast "children"))
+        (.__call__ assert (.__eq__ (.__getattr__ name "type") "name"))
+        (set
+          (.__getitem__
+            (.__getattr__ self "scope")
+            (.__getitem__ (.__getattr__ name "children") 0))
+          (.__dict "vartype" "global")))
+      (return
+        (.__call__
+          AST
+          (.__getattr__ ast "type")
+          (.__getattr__ ast "meta")
+          (splat (.__call__ map self (.__getattr__ ast "children"))))))
+    (fn
+      handle_iter
+      (arg self)
+      (arg ast)
+      (if
+        (.__eq__
+          (.__getattr__ (.__getitem__ (.__getattr__ ast "children") 0) "type")
+          "name")
+        (do
+          (set
+            name
+            (.__getitem__
+              (.__getattr__
+                (.__getitem__ (.__getattr__ ast "children") 0)
+                "children")
+              0))
+          (if
+            (.__not__ (.__contains__ (.__getattr__ self "scope") name))
+            (do
+              (set (.__getitem__ (.__getattr__ ast "meta") "vartype") "var")
+              (set
+                (.__getitem__ (.__getattr__ self "scope") name)
+                (.__dict "vartype" "var"))))))
+      (return
+        (.__call__
+          AST
+          (.__getattr__ ast "type")
+          (.__getattr__ ast "meta")
+          (splat (.__call__ map self (.__getattr__ ast "children"))))))
+    (fn
+      handle_nonlocal
+      (arg self)
+      (arg ast)
+      (for
+        (iter name (.__getattr__ ast "children"))
+        (.__call__ assert (.__eq__ (.__getattr__ name "type") "name"))
+        (set
+          (.__getitem__
+            (.__getattr__ self "scope")
+            (.__getitem__ (.__getattr__ name "children") 0))
+          (.__dict "vartype" "nonlocal")))
+      (return
+        (.__call__
+          AST
+          (.__getattr__ ast "type")
+          (.__getattr__ ast "meta")
+          (splat (.__call__ map self (.__getattr__ ast "children"))))))
+    (fn
+      handle_set
+      (arg self)
+      (arg ast)
+      (.__call__ print (.__call__ pp ast) (.__getattr__ self "scope"))
+      (if
+        (.__eq__
+          (.__getattr__ (.__getitem__ (.__getattr__ ast "children") 0) "type")
+          "name")
+        (do
+          (set
+            name
+            (.__getitem__
+              (.__getattr__
+                (.__getitem__ (.__getattr__ ast "children") 0)
+                "children")
+              0))
+          (if
+            (.__not__ (.__contains__ (.__getattr__ self "scope") name))
+            (do
+              (set (.__getitem__ (.__getattr__ ast "meta") "vartype") "var")
+              (set
+                (.__getitem__ (.__getattr__ self "scope") name)
+                (.__dict "vartype" "var"))))))
+      (return
+        (.__call__
+          AST
+          (.__getattr__ ast "type")
+          (.__getattr__ ast "meta")
+          (splat (.__call__ map self (.__getattr__ ast "children"))))))
+    (fn postprocess (arg self) (arg ast) (return ast))
+    (fn
+      __call__
+      (arg self)
+      (arg ast)
+      (if (.__call__ isinstance ast str) (return ast))
+      (set type (.__getattr__ ast "type"))
+      (set handler (.__call__ getattr self (.__add__ "handle_" type) None))
+      (if
+        handler
+        (return (.postprocess self (.__call__ handler ast)))
+        (return
+          (.postprocess
+            self
+            (.__call__
+              AST
+              type
+              (splat (.__call__ map self (.__getattr__ ast "children")))))))))
+  (fn pass1 (arg ast) (return (.__call__ (.__call__ Pass_1) ast))))

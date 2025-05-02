@@ -1,0 +1,170 @@
+(module
+  (import_as "json" json)
+  (import_as "re" re)
+  (class
+    AST
+    (fn
+      __init__
+      (arg self)
+      (arg type)
+      (arg (splat children))
+      (.__setattr__ self "type" type)
+      (if
+        (and
+          (.__gt__ (.__call__ len children) 0)
+          (.__call__ isinstance (.__getitem__ children 0) dict))
+        (do
+          (.__setattr__ self "meta" (.__getitem__ children 0))
+          (.__setattr__
+            self
+            "children"
+            (.__getitem__ children (.__call__ slice 1 None None))))
+        (do
+          (.__setattr__ self "meta" (.__dict))
+          (.__setattr__ self "children" children)))))
+  (fn
+    ast_to_pplist
+    (arg ast)
+    (if (.__call__ isinstance ast str) (return (.dumps json ast)))
+    (if
+      (.__eq__ (.__getattr__ ast "type") "name")
+      (return (.__getitem__ (.__getattr__ ast "children") 0)))
+    (if
+      (.__eq__ (.__getattr__ ast "type") "num")
+      (return (.__getitem__ (.__getattr__ ast "children") 0)))
+    (return
+      (.__list
+        "("
+        (.__getattr__ ast "type")
+        (splat (.__call__ map ast_to_pplist (.__getattr__ ast "children")))
+        ")")))
+  (fn
+    ppline
+    (arg pplist)
+    (arg maxlen)
+    (if (.__call__ isinstance pplist str) (return pplist))
+    (set result (.__getitem__ pplist 0))
+    (for
+      (iter child (.__getitem__ pplist (.__call__ slice 1 (.__neg__ 1) None)))
+      (set
+        result
+        (.__add__
+          (.__add__
+            result
+            (.__call__ ppline child (.__sub__ maxlen (.__call__ len result))))
+          " ")))
+    (set
+      result
+      (.__add__
+        (.__getitem__ result (.__call__ slice 0 (.__neg__ 1) None))
+        (.__getitem__ pplist (.__neg__ 1))))
+    (if
+      (.__gt__ (.__call__ len result) maxlen)
+      (.__call__ raise (.__call__ Exception "Line too long")))
+    (return result))
+  (set maxlen 80)
+  (fn
+    pp_pplist
+    (arg pplist)
+    (arg indent "  ")
+    (try
+      (return
+        (.__call__ ppline pplist (.__sub__ maxlen (.__call__ len indent))))
+      (except
+        Exception
+        e
+        (set
+          result
+          (.__add__
+            (.__add__
+              (.__add__ (.__getitem__ pplist 0) (.__getitem__ pplist 1))
+              "\\n")
+            indent))
+        (for
+          (iter
+            child
+            (.__getitem__ pplist (.__call__ slice 2 (.__neg__ 2) None)))
+          (set
+            result
+            (.__add__
+              (.__add__
+                (.__add__
+                  result
+                  (.__call__ pp_pplist child (.__add__ indent "  ")))
+                "\\n")
+              indent)))
+        (set
+          result
+          (.__add__
+            (.__add__
+              result
+              (.__call__
+                pp_pplist
+                (.__getitem__ pplist (.__neg__ 2))
+                (.__add__ indent "  ")))
+            (.__getitem__ pplist (.__neg__ 1))))
+        (return result))))
+  (fn
+    pp
+    (arg ast)
+    (return (.__call__ pp_pplist (.__call__ ast_to_pplist ast))))
+  (fn
+    _parse_pp
+    (arg str)
+    (set str (.strip str))
+    (if
+      (.__eq__ (.__getitem__ str 0) "\"")
+      (do
+        (set i 1)
+        (while
+          True
+          (if
+            (.__eq__ (.__getitem__ str i) "\"")
+            (return
+              (.__list
+                (.__getitem__ str (.__call__ slice 1 i None))
+                (.__getitem__ str (.__call__ slice (.__add__ i 1) None None)))))
+          (if (.__eq__ (.__getitem__ str i) "\\\\") (set i (.__add__ i 1)))
+          (set i (.__add__ i 1))))
+      (.__eq__ (.__getitem__ str 0) "(")
+      (do
+        (set str (.strip (.__getitem__ str (.__call__ slice 1 None None))))
+        (set result (.__list))
+        (while
+          (and str (.__ne__ (.__getitem__ str 0) ")"))
+          (set (.__list first rest) (.__call__ _parse_pp str))
+          (.append result first)
+          (set str rest))
+        (return
+          (.__list
+            (.__call__
+              AST
+              (.__getitem__
+                (.__getattr__ (.__getitem__ result 0) "children")
+                0)
+              (splat (.__getitem__ result (.__call__ slice 1 None None))))
+            (.__getitem__ str (.__call__ slice 1 None None)))))
+      (do
+        (set result "")
+        (while
+          (and
+            (and
+              (and str (.__not__ (.isspace (.__getitem__ str 0))))
+              (.__ne__ (.__getitem__ str 0) "("))
+            (.__ne__ (.__getitem__ str 0) ")"))
+          (set result (.__add__ result (.__getitem__ str 0)))
+          (set str (.__getitem__ str (.__call__ slice 1 None None))))
+        (if
+          (.match re "\"^\\d+[.]?\\d*$" result)
+          (return (.__list (.__call__ AST "num" result) str))
+          (return (.__list (.__call__ AST "name" result) str))))))
+  (fn
+    parse_pp
+    (arg str)
+    (set result (.__list))
+    (while
+      (.strip str)
+      (set (.__list first rest) (.__call__ _parse_pp str))
+      (.append result first)
+      (set str rest))
+    (return (.__call__ AST "module" (splat result)))))
