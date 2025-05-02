@@ -80,6 +80,16 @@ class Compiler:
         if "vartype" in iter.meta:
             vartype = iter.meta["vartype"] + " "
         return "for(" + vartype + " " + self(iter.children[0])+ " of " + self(iter.children[1]) + "){" + self(ast.children[1]) + "}"
+    def compile_generator(self, ast):
+        result = "(function*(){\n"
+        for child in ast.children[1:]:
+            if child.type == "iter":
+                result += "for(const " + self(child.children[0]) + " of " + self(child.children[1]) + ")\n"
+            else:
+                result += "if(" + self(child) + ")\n"
+        result += "yield " + self(ast.children[0]) + ";\n"
+        result += "})()"
+        return result
     def compile_global(self, ast):
         return ""
     def compile_if(self, ast):

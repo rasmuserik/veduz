@@ -26,9 +26,48 @@ Vision:
 - Only a small subset of python, that can run efficientlyt on JS-engines, are implemented. Full python compatibility is a non-goal.
 - AST should be as simple as possible, – everything that behaves like method-calls should be method-calls, everything that could be variables should be variables etc.
 # Specification
-## If-else
+## Display/generator
 
 ```python
+(x for x in range(2))
+(x for x in range(12) if x.even())
+[x+y for x in range(5) for y in range(5)]
+```
+
+```AST
+(generator x 
+    (iter x (.__call__ range 2)))
+(generator x 
+    (iter x (.__call__ range 12))
+    (.even x))
+(.__call__ list
+    (generator (.__add__ x y)
+        (iter x (.__call__ range 5))
+        (iter y (.__call__ range 5))))
+```
+
+
+```js
+(function* () {
+  for (const x of range(2)) yield x;
+})();
+(function*() {
+  for(const x of range(12))
+    if(x.even())
+      yield x
+})()
+list((function*() {
+  for(const x of range(5))
+    for(const y of range(5))
+      yield x.__add__(y)
+})())
+```
+
+## If-else
+
+
+```python
+if a: 1
 if a:
   b 
   c
@@ -43,11 +82,13 @@ else:
 ```
 
 ```AST
+(if a 1)
 (if a (do b c))
 (if e f g (do h i) j)
 ```
 
 ```js
+if(a) { 1 }
 if(a) { b ; c }
 if(e) { f } else if(g) { h; i} else {j}
 ```
@@ -118,6 +159,8 @@ catch (e) {
   else if (e instanceof E2) { 6 }
 } finally { 7 }
 ```
+
+
 
 ## Augmented assignment
 

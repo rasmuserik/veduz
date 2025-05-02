@@ -60,7 +60,6 @@ class Parser:
             return AST(".__setitem__", self(node.target.value), self(node.target.slice[0].slice.value), val)
         assert(isinstance(node.target, cst.Name))
         return AST("set", self(node.target), val)
-
     def parse_Attribute(self, node):
         assert(isinstance(node.attr, cst.Name))
         return AST(".__getattr__", self(node.value), node.attr.value)
@@ -160,6 +159,17 @@ class Parser:
         if node.params.star_kwarg:
             params.append(AST("kwarg", AST("splat", self(node.params.star_kwarg.name))))
         return AST("fn", self(node.name), *params, *map(self, node.body.body))
+    def parse_GeneratorExp(self, node):
+        result = ["generator", self(node.elt)];
+        for_in = node.for_in
+        while for_in:
+            result.append(AST("iter", self(for_in.target), self(for_in.iter)))
+            for if_ in for_in.ifs:
+                result.append(self(if_.test))
+            for_in = for_in.inner_for_in
+        return AST(*result)
+    def parse_ListComp(self, node):
+        return AST(".__call__", AST("name", "list"), self.parse_GeneratorExp(node))
     def parse_Global(self, node):
         return AST("global", *map(self, node.names))
     def parse_If(self, node):
@@ -238,6 +248,9 @@ class Parser:
     def parse_Return(self, node):
         return AST("return", self(node.value))
     def parse_SimpleStatementLine(self, node):
+        assert(len(node.body) == 1)
+        return self(node.body[0])
+    def parse_SimpleStatementSuite(self, node):
         assert(len(node.body) == 1)
         return self(node.body[0])
     def parse_SimpleString(self, node):
