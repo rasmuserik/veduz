@@ -1,4 +1,5 @@
-import { print } from './runtime.js';
+import * as runtime from '@/mupyjs/runtime.js';
+Object.assign(self, runtime);
 import * as re from '@/re';
 function legal_method_name(name) {
   return (

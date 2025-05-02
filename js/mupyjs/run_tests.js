@@ -1,4 +1,5 @@
-import { print } from './runtime.js';
+import * as runtime from '@/mupyjs/runtime.js';
+Object.assign(self, runtime);
 import * as glob from '@/glob';
 import * as sys from '@/sys';
 import { prettier } from '@/mupyjs/main';

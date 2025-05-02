@@ -1,4 +1,5 @@
-import { print } from './runtime.js';
+import * as runtime from '@/mupyjs/runtime.js';
+Object.assign(self, runtime);
 import * as cst from '@/libcst';
 import { AST, pp } from '@/mupyjs/AST';
 import { legal_method_name } from '@/mupyjs/utils';

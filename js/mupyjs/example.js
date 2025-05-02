@@ -1,4 +1,5 @@
-import { print } from './runtime.js';
+import * as runtime from '@/mupyjs/runtime.js';
+Object.assign(self, runtime);
 class AST {
   constructor(type, ...children) {
     const self = this;

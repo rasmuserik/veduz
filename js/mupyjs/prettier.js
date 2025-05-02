@@ -1,4 +1,5 @@
-import { print } from './runtime.js';
+import * as runtime from '@/mupyjs/runtime.js';
+Object.assign(self, runtime);
 import * as sys from '@/sys';
 import * as requests from '@/requests';
 import * as subprocess from '@/subprocess';

@@ -206,5 +206,5 @@ class Compiler:
 def compile(ast):
     return Compiler()(ast)
 
-def compile_import(ast):
-    return "import {print} from './runtime.js';\n" + compile(ast)
+def compile_module(ast):
+    return "import * as runtime from '@/mupyjs/runtime.js';Object.assign(self, runtime);\n" + compile(ast)

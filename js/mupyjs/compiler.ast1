@@ -857,9 +857,9 @@
           (.__call__ raise (.__call__ CompileError error))))))
   (fn compile (arg ast) (return (.__call__ (.__call__ Compiler) ast)))
   (fn
-    compile_import
+    compile_module
     (arg ast)
     (return
       (.__add__
-        "import {print} from './runtime.js';\\n"
+        "import * as runtime from '@/mupyjs/runtime.js';Object.assign(self, runtime);\\n"
         (.__call__ compile ast)))))

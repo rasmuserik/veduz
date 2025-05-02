@@ -1,4 +1,5 @@
-import { print } from './runtime.js';
+import * as runtime from '@/mupyjs/runtime.js';
+Object.assign(self, runtime);
 import * as json from '@/json';
 import { AST, pp } from '@/mupyjs/AST';
 import { legal_method_name } from '@/mupyjs/utils';
@@ -531,6 +532,8 @@ class Compiler {
 function compile(ast) {
   return new Compiler()(ast);
 }
-function compile_import(ast) {
-  return "import {print} from './runtime.js';\\n".__add__(compile(ast));
+function compile_module(ast) {
+  return "import * as runtime from '@/mupyjs/runtime.js';Object.assign(self, runtime);\\n".__add__(
+    compile(ast)
+  );
 }

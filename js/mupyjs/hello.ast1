@@ -1,0 +1,8 @@
+(do
+  (.__call__ print "Hello, world!")
+  (.__setattr__
+    (.__getattr__ document "body")
+    "innerHTML"
+    (.__call__
+      list
+      (generator (.__add__ "hello " i) (iter i (.__call__ range 10))))))
