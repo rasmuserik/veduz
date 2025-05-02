@@ -1,0 +1,813 @@
+(module
+  (import_as "libcst" cst)
+  (import_from "mupyjs/AST" AST pp)
+  (set
+    cst_binops
+    (.__dict
+      "Multiply"
+      "__mul__"
+      "Power"
+      "__pow__"
+      "FloorDivide"
+      "__floordiv__"
+      "Divide"
+      "__truediv__"
+      "Modulo"
+      "__mod__"
+      "Add"
+      "__add__"
+      "Subtract"
+      "__sub__"
+      "LeftShift"
+      "__lshift__"
+      "RightShift"
+      "__rshift__"
+      "BitOr"
+      "__or__"
+      "BitXor"
+      "__xor__"
+      "BitAnd"
+      "__and__"
+      "MatrixMultiply"
+      "__matmul__"
+      "LessThan"
+      "__lt__"
+      "GreaterThan"
+      "__gt__"
+      "Equal"
+      "__eq__"
+      "LessThanOrEqual"
+      "__le__"
+      "GreaterThanOrEqual"
+      "__ge__"
+      "NotEqual"
+      "__ne__"))
+  (fn
+    classname
+    (arg obj)
+    (return (.__getattr__ (.__getattr__ obj "__class__") "__name__")))
+  (class
+    ParseError
+    (fn
+      __init__
+      (arg self)
+      (arg message)
+      (.__setattr__ self "message" message)))
+  (class
+    Parser
+    (fn
+      parse_Assign
+      (arg self)
+      (arg node)
+      (.__call__
+        assert
+        (.__eq__ (.__call__ len (.__getattr__ node "targets")) 1))
+      (if
+        (.__call__
+          isinstance
+          (.__getattr__
+            (.__getitem__ (.__getattr__ node "targets") 0)
+            "target")
+          (.__getattr__ cst "Attribute"))
+        (do
+          (.__call__
+            assert
+            (.__call__
+              isinstance
+              (.__getattr__
+                (.__getitem__ (.__getattr__ node "targets") 0)
+                "target")
+              (.__getattr__ cst "Attribute")))
+          (.__call__
+            assert
+            (.__call__
+              isinstance
+              (.__getattr__
+                (.__getattr__
+                  (.__getitem__ (.__getattr__ node "targets") 0)
+                  "target")
+                "attr")
+              (.__getattr__ cst "Name")))
+          (return
+            (.__call__
+              AST
+              ".__setattr__"
+              (.__call__
+                self
+                (.__getattr__
+                  (.__getattr__
+                    (.__getitem__ (.__getattr__ node "targets") 0)
+                    "target")
+                  "value"))
+              (.__getattr__
+                (.__getattr__
+                  (.__getattr__
+                    (.__getitem__ (.__getattr__ node "targets") 0)
+                    "target")
+                  "attr")
+                "value")
+              (.__call__ self (.__getattr__ node "value")))))
+        (return
+          (.__call__
+            AST
+            "set"
+            (.__call__ self (.__getitem__ (.__getattr__ node "targets") 0))
+            (.__call__ self (.__getattr__ node "value"))))))
+    (fn
+      parse_AssignTarget
+      (arg self)
+      (arg node)
+      (return (.__call__ self (.__getattr__ node "target"))))
+    (fn
+      parse_Attribute
+      (arg self)
+      (arg node)
+      (return
+        (.__call__
+          AST
+          "."
+          (.__call__ self (.__getattr__ node "value"))
+          (.__call__ self (.__getattr__ node "attr")))))
+    (fn
+      parse_BinaryOperation
+      (arg self)
+      (arg node)
+      (set cls (.__call__ classname (.__getattr__ node "operator")))
+      (if
+        (.__contains__ cst_binops cls)
+        (return
+          (.__call__
+            AST
+            (.__add__ "." (.__getitem__ cst_binops cls))
+            (.__call__ self (.__getattr__ node "left"))
+            (.__call__ self (.__getattr__ node "right"))))
+        (do
+          (.__call__ print node)
+          (.__call__
+            raise
+            (.__call__ Exception "Unknown binary operator" node)))))
+    (fn
+      parse_BooleanOperation
+      (arg self)
+      (arg node)
+      (if
+        (.__call__
+          isinstance
+          (.__getattr__ node "operator")
+          (.__getattr__ cst "And"))
+        (return
+          (.__call__
+            AST
+            "and"
+            (.__call__ self (.__getattr__ node "left"))
+            (.__call__ self (.__getattr__ node "right"))))
+        (.__call__
+          isinstance
+          (.__getattr__ node "operator")
+          (.__getattr__ cst "Or"))
+        (return
+          (.__call__
+            AST
+            "or"
+            (.__call__ self (.__getattr__ node "left"))
+            (.__call__ self (.__getattr__ node "right"))))
+        (.__call__
+          raise
+          (.__call__ Exception "Unknown boolean operator" node))))
+    (fn
+      parse_Call
+      (arg self)
+      (arg node)
+      (set args (.__list))
+      (set kwargs (.__list))
+      (for
+        (iter arg (.__getattr__ node "args"))
+        (if
+          (.__getattr__ arg "keyword")
+          (do
+            (.__call__
+              assert
+              (.__call__
+                isinstance
+                (.__getattr__ arg "keyword")
+                (.__getattr__ cst "Name")))
+            (.append
+              kwargs
+              (.__getattr__ (.__getattr__ arg "keyword") "value"))
+            (.append kwargs (.__call__ self (.__getattr__ arg "value"))))
+          (.__eq__ (.__getattr__ arg "star") "*")
+          (.append
+            args
+            (.__call__
+              AST
+              "splat"
+              (.__call__ self (.__getattr__ arg "value"))))
+          (.__eq__ (.__getattr__ arg "star") "**")
+          (.append
+            kwargs
+            (.__call__
+              AST
+              "splat"
+              (.__call__ self (.__getattr__ arg "value"))))
+          (.append args (.__call__ self (.__getattr__ arg "value")))))
+      (if
+        (.__gt__ (.__call__ len kwargs) 0)
+        (.append
+          args
+          (.__call__
+            AST
+            "dict"
+            "_kwargs"
+            (.__call__ AST "name" "True")
+            (splat kwargs))))
+      (return
+        (.__call__
+          AST
+          ".__call__"
+          (.__call__ self (.__getattr__ node "func"))
+          (splat args))))
+    (fn
+      parse_ClassDef
+      (arg self)
+      (arg node)
+      (.__call__
+        assert
+        (.__call__
+          isinstance
+          (.__getattr__ node "body")
+          (.__getattr__ cst "IndentedBlock")))
+      (return
+        (.__call__
+          AST
+          "class"
+          (.__call__ self (.__getattr__ node "name"))
+          (splat
+            (.__call__
+              map
+              self
+              (.__getattr__ (.__getattr__ node "body") "body"))))))
+    (fn
+      parse_Comparison
+      (arg self)
+      (arg node)
+      (set left (.__getattr__ node "left"))
+      (.__call__
+        assert
+        (.__eq__ (.__call__ len (.__getattr__ node "comparisons")) 1))
+      (set
+        type
+        (.__call__
+          classname
+          (.__getattr__
+            (.__getitem__ (.__getattr__ node "comparisons") 0)
+            "operator")))
+      (set
+        right
+        (.__getattr__
+          (.__getitem__ (.__getattr__ node "comparisons") 0)
+          "comparator"))
+      (set
+        comparisons
+        (.__dict
+          "LessThan"
+          "__lt__"
+          "LessThanEqual"
+          "__le__"
+          "GreaterThan"
+          "__gt__"
+          "GreaterThanEqual"
+          "__ge__"
+          "Equal"
+          "__eq__"
+          "NotEqual"
+          "__ne__"
+          "Is"
+          "__is"
+          "IsNot"
+          "__isnot"))
+      (.__call__ print node)
+      (if
+        (.__contains__ comparisons type)
+        (do
+          (set
+            result
+            (.__call__
+              AST
+              (.__add__ "." (.__getitem__ comparisons type))
+              (.__call__ self left)
+              (.__call__ self right)))
+          (.__call__ print (.__call__ pp result))
+          (return result)))
+      (if
+        (.__eq__ type "In")
+        (return
+          (.__call__
+            AST
+            ".__contains__"
+            (.__call__ self right)
+            (.__call__ self left))))
+      (if
+        (.__eq__ type "NotIn")
+        (return
+          (.__call__
+            AST
+            ".__not__"
+            (.__call__
+              AST
+              ".__contains__"
+              (.__call__ self right)
+              (.__call__ self left)))))
+      (.__call__
+        raise
+        (.__call__ Exception "Unknown comparison operator" node)))
+    (fn
+      parse_Dict
+      (arg self)
+      (arg node)
+      (.__call__
+        assert
+        (.__eq__ (.__call__ len (.__getattr__ node "elements")) 0))
+      (return (.__call__ AST "dict")))
+    (fn
+      parse_Expr
+      (arg self)
+      (arg node)
+      (return (.__call__ self (.__getattr__ node "value"))))
+    (fn
+      parse_For
+      (arg self)
+      (arg node)
+      (return
+        (.__call__
+          AST
+          "for"
+          (.__call__
+            AST
+            "iter"
+            (.__call__ self (.__getattr__ node "target"))
+            (.__call__ self (.__getattr__ node "iter")))
+          (splat
+            (.__call__
+              map
+              self
+              (.__getattr__ (.__getattr__ node "body") "body"))))))
+    (fn
+      parse_FormattedString
+      (arg self)
+      (arg node)
+      (set
+        result
+        (ifelse
+          (and
+            (.__gt__ (.__call__ len (.__getattr__ node "parts")) 0)
+            (.__call__
+              isinstance
+              (.__getitem__ (.__getattr__ node "parts") 0)
+              (.__getattr__ cst "FormattedStringText")))
+          (.__list)
+          (.__list "")))
+      (for
+        (iter part (.__getattr__ node "parts"))
+        (if
+          (.__call__ isinstance part (.__getattr__ cst "FormattedStringText"))
+          (.append result (.__getattr__ part "value"))
+          (.__call__
+            isinstance
+            part
+            (.__getattr__ cst "FormattedStringExpression"))
+          (.append result (.__call__ self (.__getattr__ part "expression")))))
+      (return (.__call__ AST ".__fstr" (splat result))))
+    (fn
+      parse_FunctionDef
+      (arg self)
+      (arg node)
+      (.__call__
+        assert
+        (.__call__
+          isinstance
+          (.__getattr__ node "params")
+          (.__getattr__ cst "Parameters")))
+      (.__call__
+        assert
+        (.__call__
+          isinstance
+          (.__getattr__ node "body")
+          (.__getattr__ cst "IndentedBlock")))
+      (set params (.__list))
+      (for
+        (iter
+          param
+          (.__add__
+            (or
+              (.__getattr__ (.__getattr__ node "params") "params")
+              (.__tuple))
+            (or
+              (.__getattr__ (.__getattr__ node "params") "posonly_params")
+              (.__tuple))))
+        (.append
+          params
+          (.__call__
+            AST
+            (splat
+              (.__add__
+                (.__list "arg" (.__call__ self (.__getattr__ param "name")))
+                (ifelse
+                  (.__getattr__ param "default")
+                  (.__list (.__call__ self (.__getattr__ param "default")))
+                  (.__list)))))))
+      (if
+        (and
+          (.__getattr__ (.__getattr__ node "params") "star_arg")
+          (.__call__
+            isinstance
+            (.__getattr__ (.__getattr__ node "params") "star_arg")
+            (.__getattr__ cst "Param")))
+        (.append
+          params
+          (.__call__
+            AST
+            "arg"
+            (.__call__
+              AST
+              "splat"
+              (.__call__
+                self
+                (.__getattr__
+                  (.__getattr__ (.__getattr__ node "params") "star_arg")
+                  "name"))))))
+      (if
+        (.__getattr__ (.__getattr__ node "params") "kwonly_params")
+        (for
+          (iter
+            param
+            (or
+              (.__getattr__ (.__getattr__ node "params") "kwonly_params")
+              (.__tuple)))
+          (.append
+            params
+            (.__call__
+              AST
+              (splat
+                (.__add__
+                  (.__list
+                    "kwarg"
+                    (.__call__ self (.__getattr__ param "name")))
+                  (ifelse
+                    (.__getattr__ param "default")
+                    (.__list (.__call__ self (.__getattr__ param "default")))
+                    (.__list))))))))
+      (if
+        (.__getattr__ (.__getattr__ node "params") "star_kwarg")
+        (.append
+          params
+          (.__call__
+            AST
+            "kwarg"
+            (.__call__
+              AST
+              "splat"
+              (.__call__
+                self
+                (.__getattr__
+                  (.__getattr__ (.__getattr__ node "params") "star_kwarg")
+                  "name"))))))
+      (return
+        (.__call__
+          AST
+          "fn"
+          (.__call__ self (.__getattr__ node "name"))
+          (splat params)
+          (splat
+            (.__call__
+              map
+              self
+              (.__getattr__ (.__getattr__ node "body") "body"))))))
+    (fn
+      parse_If
+      (arg self)
+      (arg node)
+      (set
+        result
+        (.__list
+          "if"
+          (.__call__ self (.__getattr__ node "test"))
+          (.__call__ self (.__getattr__ node "body"))))
+      (set orelse (.__getattr__ node "orelse"))
+      (while
+        (.__call__ isinstance orelse (.__getattr__ cst "If"))
+        (.append result (.__call__ self (.__getattr__ orelse "test")))
+        (.append result (.__call__ self (.__getattr__ orelse "body")))
+        (set orelse (.__getattr__ orelse "orelse")))
+      (if
+        orelse
+        (do
+          (.__call__
+            assert
+            (.__call__ isinstance orelse (.__getattr__ cst "Else")))
+          (.append result (.__call__ self (.__getattr__ orelse "body")))))
+      (return (.__call__ AST (splat result))))
+    (fn
+      parse_IndentedBlock
+      (arg self)
+      (arg node)
+      (return
+        (.__call__
+          AST
+          "do"
+          (splat (.__call__ map self (.__getattr__ node "body"))))))
+    (fn
+      parse_Index
+      (arg self)
+      (arg node)
+      (return (.__call__ self (.__getattr__ node "value"))))
+    (fn
+      helper_Import_names
+      (arg self)
+      (arg namenode)
+      (if
+        (.__call__ isinstance namenode (.__getattr__ cst "Attribute"))
+        (do
+          (set asname (.__getattr__ namenode "attr"))
+          (set name "")
+          (while
+            (.__call__ isinstance namenode (.__getattr__ cst "Attribute"))
+            (set
+              name
+              (.__add__
+                (.__add__
+                  (.__getattr__ (.__getattr__ namenode "attr") "value")
+                  "/")
+                name))
+            (set namenode (.__getattr__ namenode "value")))
+          (set
+            name
+            (.__add__
+              (.__add__ (.__getattr__ namenode "value") "/")
+              (.__getitem__ name (.__call__ slice None (.__neg__ 1) None)))))
+        (do (set name (.__getattr__ namenode "value")) (set asname namenode)))
+      (return (.__list name asname)))
+    (fn
+      parse_Import
+      (arg self)
+      (arg node)
+      (.__call__
+        assert
+        (.__call__
+          isinstance
+          (.__getitem__ (.__getattr__ node "names") 0)
+          (.__getattr__ cst "ImportAlias")))
+      (.__call__
+        assert
+        (.__eq__ (.__call__ len (.__getattr__ node "names")) 1))
+      (set
+        (.__list name asname)
+        (.helper_Import_names
+          self
+          (.__getattr__ (.__getitem__ (.__getattr__ node "names") 0) "name")))
+      (if
+        (.__getattr__ (.__getitem__ (.__getattr__ node "names") 0) "asname")
+        (set
+          asname
+          (.__getattr__
+            (.__getattr__
+              (.__getitem__ (.__getattr__ node "names") 0)
+              "asname")
+            "name")))
+      (return (.__call__ AST "import_as" name (.__call__ self asname))))
+    (fn
+      parse_ImportFrom
+      (arg self)
+      (arg node)
+      (set
+        (.__list name asname)
+        (.helper_Import_names self (.__getattr__ node "module")))
+      (set module name)
+      (set vars (.__list))
+      (for
+        (iter name (.__getattr__ node "names"))
+        (.__call__ assert (.__not__ (.__getattr__ name "asname")))
+        (.append vars (.__call__ self (.__getattr__ name "name"))))
+      (return (.__call__ AST "import_from" module (splat vars))))
+    (fn
+      parse_IndentedBlock
+      (arg self)
+      (arg node)
+      (if
+        (.__eq__ (.__call__ len (.__getattr__ node "body")) 1)
+        (return (.__call__ self (.__getitem__ (.__getattr__ node "body") 0)))
+        (return
+          (.__call__
+            AST
+            "do"
+            (splat (.__call__ map self (.__getattr__ node "body")))))))
+    (fn
+      parse_Integer
+      (arg self)
+      (arg node)
+      (return (.__call__ AST "num" (.__getattr__ node "value"))))
+    (fn
+      parse_Module
+      (arg self)
+      (arg node)
+      (return
+        (.__call__
+          AST
+          "module"
+          (splat (.__call__ map self (.__getattr__ node "body"))))))
+    (fn
+      parse_Name
+      (arg self)
+      (arg node)
+      (return (.__call__ AST "name" (.__getattr__ node "value"))))
+    (fn
+      parse_NoneType
+      (arg self)
+      (arg node)
+      (return (.__call__ AST "name" "None")))
+    (fn
+      parse_Pass
+      (arg self)
+      (arg node)
+      (return (.__call__ AST "name" "pass")))
+    (fn
+      parse_Return
+      (arg self)
+      (arg node)
+      (return
+        (.__call__ AST "return" (.__call__ self (.__getattr__ node "value")))))
+    (fn
+      parse_SimpleStatementLine
+      (arg self)
+      (arg node)
+      (.__call__
+        assert
+        (.__eq__ (.__call__ len (.__getattr__ node "body")) 1))
+      (return (.__call__ self (.__getitem__ (.__getattr__ node "body") 0))))
+    (fn
+      parse_SimpleString
+      (arg self)
+      (arg node)
+      (return
+        (.__getitem__
+          (.__getattr__ node "value")
+          (.__call__ slice 1 (.__neg__ 1) None))))
+    (fn
+      parse_Slice
+      (arg self)
+      (arg node)
+      (return
+        (.__call__
+          AST
+          ".__call__"
+          (.__call__ AST "name" "slice")
+          (.__call__ self (.__getattr__ node "lower"))
+          (.__call__ self (.__getattr__ node "upper"))
+          (.__call__ self (.__getattr__ node "step")))))
+    (fn
+      parse_Subscript
+      (arg self)
+      (arg node)
+      (.__call__
+        assert
+        (.__eq__ (.__call__ len (.__getattr__ node "slice")) 1))
+      (.__call__
+        assert
+        (.__call__
+          isinstance
+          (.__getitem__ (.__getattr__ node "slice") 0)
+          (.__getattr__ cst "SubscriptElement")))
+      (return
+        (.__call__
+          AST
+          ".__getitem__"
+          (.__call__ self (.__getattr__ node "value"))
+          (.__call__
+            self
+            (.__getattr__
+              (.__getitem__ (.__getattr__ node "slice") 0)
+              "slice")))))
+    (fn
+      parse_Try
+      (arg self)
+      (arg node)
+      (.__call__ print node)
+      (set body (.__call__ self (.__getattr__ node "body")))
+      (set excepts (.__list))
+      (set name None)
+      (for
+        (iter handler (.__getattr__ node "handlers"))
+        (if
+          (.__call__ isinstance handler (.__getattr__ cst "ExceptHandler"))
+          (do
+            (.append excepts handler)
+            (if
+              (.__getattr__ handler "name")
+              (do
+                (.__call__
+                  assert
+                  (.__call__
+                    isinstance
+                    (.__getattr__ handler "name")
+                    (.__getattr__ cst "AsName")))
+                (if
+                  name
+                  (.__call__
+                    assert
+                    (.__eq__
+                      name
+                      (.__getattr__ (.__getattr__ handler "name") "name")))
+                  (set
+                    name
+                    (.__getattr__
+                      (.__getattr__ (.__getattr__ handler "name") "name")
+                      "value"))))))))
+      (if (.__is name None) (set name "__exception"))
+      (set result (.__list "try" body))
+      (for
+        (iter e excepts)
+        (set body (.__call__ self (.__getattr__ e "body")))
+        (if
+          (.__eq__ (.__getattr__ body "type") "do")
+          (set body (.__getattr__ body "children"))
+          (set body (.__list body)))
+        (.append
+          result
+          (.__call__
+            AST
+            "except"
+            (.__call__ self (.__getattr__ e "type"))
+            (.__call__ AST "name" name)
+            (splat body))))
+      (if
+        (.__getattr__ node "finalbody")
+        (.append
+          result
+          (.__call__
+            AST
+            "finally"
+            (.__call__
+              self
+              (.__getattr__ (.__getattr__ node "finalbody") "body")))))
+      (.__call__ print result)
+      (return (.__call__ AST (splat result))))
+    (fn
+      parse_UnaryOperation
+      (arg self)
+      (arg node)
+      (if
+        (.__call__
+          isinstance
+          (.__getattr__ node "operator")
+          (.__getattr__ cst "Minus"))
+        (return
+          (.__call__
+            AST
+            ".__neg__"
+            (.__call__ self (.__getattr__ node "expression"))))
+        (.__call__
+          isinstance
+          (.__getattr__ node "operator")
+          (.__getattr__ cst "Plus"))
+        (return
+          (.__call__
+            AST
+            ".__pos__"
+            (.__call__ self (.__getattr__ node "expression"))))
+        (.__call__
+          isinstance
+          (.__getattr__ node "operator")
+          (.__getattr__ cst "BitInvert"))
+        (return
+          (.__call__
+            AST
+            ".__invert__"
+            (.__call__ self (.__getattr__ node "expression"))))
+        (.__call__
+          isinstance
+          (.__getattr__ node "operator")
+          (.__getattr__ cst "Not"))
+        (return
+          (.__call__
+            AST
+            ".__not__"
+            (.__call__ self (.__getattr__ node "expression"))))
+        (.__call__ raise (.__call__ Exception "Unknown unary operator" node))))
+    (fn
+      __call__
+      (arg self)
+      (arg node)
+      (set node_type (.__call__ classname node))
+      (set
+        handler
+        (.__call__ getattr self (.__add__ "parse_" node_type) None))
+      (if
+        handler
+        (return (.__call__ handler node))
+        (do
+          (.__call__ print node)
+          (set error (.__fstr "No handler for " node_type))
+          (.__call__ raise (.__call__ ParseError error))))))
+  (fn
+    parse
+    (arg src)
+    (return (.__call__ (.__call__ Parser) (.parse_module cst src)))))
