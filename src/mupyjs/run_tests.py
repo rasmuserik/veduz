@@ -23,7 +23,7 @@ def run_test(test_file):
     ast = pass1(ast)
     write_file(prefix + '.ast1', pp(ast))
     js = compile(ast)
-    write_file(prefix + '.js.unformatted', js)
+    write_file(prefix + '.unformatted.js', js)
     write_file(prefix + '.js', prettier(js))
 
 if __name__ == "__main__":

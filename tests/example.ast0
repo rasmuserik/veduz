@@ -16,5 +16,5 @@
             "children"
             (.__getitem__ children (.__call__ slice 1 None None))))
         (do
-          (.__setattr__ self "annotations" (dict))
+          (.__setattr__ self "annotations" (.__dict))
           (.__setattr__ self "children" children))))))

@@ -118,6 +118,73 @@ catch (e) {
   else if (e instanceof E2) { 6 }
 } finally { 7 }
 ```
+
+## Augmented assignment
+
+```python
+a += 1
+foo.bar += 1
+foo["bar"] += 1
+```
+
+```AST
+(set a (.__add__ a 1))
+(.__setattr__ foo "bar" (.__add__ (.__getattr__ foo "bar") 1))
+(.__setitem__ foo "bar" (.__add__ (.__getitem__ foo "bar") 1))
+```
+
+```js
+var a = a.__add__(1);
+foo['bar'] = foo.bar.__add__(1);
+foo.__setitem__('bar', foo.__getitem__('bar').__add__(1));
+```
+
+## Functions and methods
+
+```python
+def foo():
+   pass
+class Bar:
+	def baz():
+		pass
+def quux():
+	pass
+```
+
+```AST
+(fn foo)
+(class Bar
+   (fn baz))
+(fn quux)
+```
+
+```js
+function foo() {}
+class Bar {
+  baz() {}
+}
+function quux() {}
+```
+## and, or, ifelse
+
+```python
+a and b
+a or b
+a if t else b
+```
+
+```AST
+(and a b)
+(or a b)
+(ifelse t a b)
+```
+
+```js
+a && b
+a || b
+t ? a : b
+```
+
 ## Built-in names
 
 ```python
@@ -162,6 +229,65 @@ foo.bar(baz)
 a.b.c()
 ```
 
+## While
+
+```python
+while(True):
+	123
+	456
+```
+
+```AST
+(while True 123 456)
+```
+
+```js
+while(true) { 123; 456 }
+```
+
+
+
+## Lists and dicts
+
+```python
+[1,2,*o]
+{"foo": 1, "bar": 2, **o}
+(1,2,3)
+```
+
+```AST
+(.__list 1 2 (splat o))
+(.__dict "foo" 1 "bar" 2 (splat o))
+(.__tuple 1 2 3)
+```
+
+```js
+[1,2,...o];
+__dict("foo", 1, "bar", 2, ...o);
+[1,2,3];
+```
+
+## Global
+
+```python
+def foo():
+	global x, z
+	x = 3
+	y = 4
+```
+
+```AST
+(fn foo (global x z)
+    (set x 3)
+	(set y 4))
+```
+
+```js
+function foo() {
+	x = 3;
+	var y = 4;
+}
+```
 
 ## Unary operators
 

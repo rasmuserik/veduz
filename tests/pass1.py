@@ -15,19 +15,30 @@ class Pass_1:
         result = AST("fn", ast.meta, *map(self, children))
         self.scope = prev_scope
         return result
+    def handle_global(self, ast):
+        for name in ast.children:
+            assert(name.type == "name")
+            self.scope[name.children[0]] = {"vartype": "global"}
+        return AST(ast.type, ast.meta, *map(self, ast.children))
     def handle_iter(self, ast):
         if ast.children[0].type == "name":
             name = ast.children[0].children[0]
             if not name in self.scope:
                 ast.meta["vartype"] = "var"
-                self.scope[name] = {}
+                self.scope[name] = {"vartype": "var"}
+        return AST(ast.type, ast.meta, *map(self, ast.children))
+    def handle_nonlocal(self, ast):
+        for name in ast.children:
+            assert(name.type == "name")
+            self.scope[name.children[0]] = {"vartype": "nonlocal"}
         return AST(ast.type, ast.meta, *map(self, ast.children))
     def handle_set(self, ast):
+        print(pp(ast), self.scope)
         if ast.children[0].type == "name":
             name = ast.children[0].children[0]
             if not name in self.scope:
                 ast.meta["vartype"] = "var"
-                self.scope[name] = {}
+                self.scope[name] = {"vartype": "var"}
         return AST(ast.type, ast.meta, *map(self, ast.children))
     def postprocess(self, ast):
         return ast
