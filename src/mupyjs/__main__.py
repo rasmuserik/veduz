@@ -19,7 +19,6 @@ def compile_py_to_js(pyfile):
     with open(pyfile, "r") as f:
         code = f.read()
     dest = jsfile(pyfile)
-    shutil.copyfile(pyfile, dest[:-3] + ".py")
     try:
         ast = (parse(code))
         with open(dest[:-3] + ".ast0", "w") as f:
